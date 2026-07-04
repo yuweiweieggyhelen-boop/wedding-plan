@@ -3,12 +3,12 @@ const STORAGE_KEY = "wedding-pm-state-v1";
 const initialState = {
   weddingDate: "2026-10-18",
   tasks: [
-    { id: 1, title: "确认婚宴酒店合同与尾款节点", owner: "Helen", due: "2026-07-12", phase: "场地", status: "doing", priority: "高" },
-    { id: 2, title: "筛选摄影摄像作品集并约档期", owner: "两人", due: "2026-07-18", phase: "供应商", status: "todo", priority: "高" },
-    { id: 3, title: "整理第一版宾客名单", owner: "双方父母", due: "2026-07-21", phase: "宾客", status: "doing", priority: "中" },
-    { id: 4, title: "确认婚礼主色与花艺方向", owner: "Helen", due: "2026-08-02", phase: "设计", status: "review", priority: "中" },
-    { id: 5, title: "试妆并记录妆造反馈", owner: "Helen", due: "2026-08-16", phase: "造型", status: "todo", priority: "中" },
-    { id: 6, title: "准备婚礼当天物料箱清单", owner: "伴娘", due: "2026-10-10", phase: "执行", status: "done", priority: "低" }
+    { id: 1, title: "确认婚宴酒店合同与尾款节点", details: "核对合同金额、菜单、场地使用时间和尾款支付日期。", owner: "Helen", due: "2026-07-12", phase: "场地", status: "doing", priority: "高" },
+    { id: 2, title: "筛选摄影摄像作品集并约档期", details: "对比样片风格、交付内容、双机位价格和婚礼当天档期。", owner: "两人", due: "2026-07-18", phase: "供应商", status: "todo", priority: "高" },
+    { id: 3, title: "整理第一版宾客名单", details: "先列出双方亲友、朋友和同事，后续再确认是否出席。", owner: "双方父母", due: "2026-07-21", phase: "宾客", status: "doing", priority: "中" },
+    { id: 4, title: "确认婚礼主色与花艺方向", details: "确定主色、花材倾向、迎宾区和仪式区基础风格。", owner: "Helen", due: "2026-08-02", phase: "设计", status: "review", priority: "中" },
+    { id: 5, title: "试妆并记录妆造反馈", details: "试妆后记录底妆、发型、头饰、换装时间和需要调整的点。", owner: "Helen", due: "2026-08-16", phase: "造型", status: "todo", priority: "中" },
+    { id: 6, title: "准备婚礼当天物料箱清单", details: "整理戒指、誓词卡、红包、签到用品、备用针线和充电器。", owner: "伴娘", due: "2026-10-10", phase: "执行", status: "done", priority: "低" }
   ],
   budget: [
     { id: 1, item: "婚宴酒店", category: "场地", planned: 88000, paid: 30000, due: "2026-09-18" },
@@ -77,6 +77,15 @@ function money(value) {
   return `¥${Number(value).toLocaleString("zh-CN")}`;
 }
 
+function text(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function daysBetween(dateString) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -96,7 +105,7 @@ function setView(viewName) {
 
 function renderOverview() {
   const completed = state.tasks.filter((task) => task.status === "done").length;
-  const progress = Math.round((completed / state.tasks.length) * 100);
+  const progress = state.tasks.length ? Math.round((completed / state.tasks.length) * 100) : 0;
   const planned = state.budget.reduce((sum, item) => sum + Number(item.planned), 0);
   const paid = state.budget.reduce((sum, item) => sum + Number(item.paid), 0);
   const confirmed = state.guests.filter((guest) => guest.confirmed).length;
@@ -175,12 +184,17 @@ function renderTasks() {
 
 function renderTaskCard(task) {
   const days = daysBetween(task.due);
+  const details = task.details || "暂无任务内容";
   return `
     <article class="task-card">
-      <strong>${task.title}</strong>
+      <div class="task-card-heading">
+        <strong>${text(task.title)}</strong>
+        <button class="delete-button" type="button" data-task-delete="${task.id}" aria-label="删除任务">删除</button>
+      </div>
+      <p>${text(details)}</p>
       <div class="task-meta">
-        <span class="pill">${task.owner}</span>
-        <span class="pill">${task.phase}</span>
+        <span class="pill">${text(task.owner)}</span>
+        <span class="pill">${text(task.phase)}</span>
         <span class="${days < 0 && task.status !== "done" ? "pill warn" : "pill"}">${task.due}</span>
       </div>
       <div class="task-actions">
@@ -301,6 +315,17 @@ document.body.addEventListener("click", (event) => {
     renderAll();
   }
 
+  const taskDelete = event.target.closest("[data-task-delete]");
+  if (taskDelete) {
+    const task = state.tasks.find((item) => item.id === Number(taskDelete.dataset.taskDelete));
+    if (!task) return;
+    const shouldDelete = window.confirm(`确定删除“${task.title}”吗？`);
+    if (!shouldDelete) return;
+    state.tasks = state.tasks.filter((item) => item.id !== task.id);
+    saveState();
+    renderAll();
+  }
+
   const guestToggle = event.target.closest("[data-guest-toggle]");
   if (guestToggle) {
     const guest = state.guests.find((item) => item.id === Number(guestToggle.dataset.guestToggle));
@@ -316,19 +341,44 @@ document.querySelector("#weddingDate").addEventListener("change", (event) => {
   renderAll();
 });
 
+const taskModal = document.querySelector("#taskModal");
+const taskForm = document.querySelector("#taskForm");
+
+function openTaskModal() {
+  taskForm.reset();
+  if (typeof taskModal.showModal === "function") {
+    taskModal.showModal();
+  } else {
+    taskModal.setAttribute("open", "");
+  }
+}
+
+function closeTaskModal() {
+  taskModal.close();
+}
+
+document.querySelector("#openTaskModal").addEventListener("click", openTaskModal);
+document.querySelector("#closeTaskModal").addEventListener("click", closeTaskModal);
+document.querySelector("#cancelTaskModal").addEventListener("click", closeTaskModal);
+taskModal.addEventListener("click", (event) => {
+  if (event.target === taskModal) closeTaskModal();
+});
+
 document.querySelector("#taskForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget));
   state.tasks.push({
     id: Date.now(),
     title: data.title,
+    details: data.details,
     owner: data.owner,
-    due: data.due,
+    due: state.weddingDate,
     phase: "新事项",
     status: "todo",
     priority: "中"
   });
   event.currentTarget.reset();
+  closeTaskModal();
   saveState();
   renderAll();
 });

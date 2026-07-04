@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -175,13 +176,20 @@ h3 {
   font-size: 12px;
 }
 
-input {
+input,
+textarea {
   min-height: 40px;
   border: 1px solid var(--line);
   background: var(--surface-strong);
   color: var(--ink);
   padding: 0 12px;
   border-radius: 6px;
+}
+
+textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
 }
 
 .hero-panel {
@@ -299,6 +307,7 @@ input {
 
 .ghost-button,
 .quick-form button,
+.primary-button,
 .item-action {
   min-height: 38px;
   border: 1px solid var(--sage);
@@ -311,6 +320,10 @@ input {
 .ghost-button {
   background: transparent;
   color: var(--sage-dark);
+}
+
+.primary-button {
+  min-width: 112px;
 }
 
 .stack-list {
@@ -379,6 +392,20 @@ input {
   border-radius: 8px;
 }
 
+.task-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.task-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .task-meta {
   display: flex;
   flex-wrap: wrap;
@@ -411,6 +438,78 @@ input {
   min-height: 34px;
   background: #fff;
   color: var(--sage-dark);
+}
+
+.delete-button,
+.icon-button {
+  border: 1px solid #e6c7c0;
+  background: #fff7f5;
+  color: #9b453d;
+  border-radius: 6px;
+}
+
+.delete-button {
+  min-height: 30px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.icon-button {
+  width: 38px;
+  height: 38px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.modal {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.modal::backdrop {
+  background: rgba(39, 33, 29, 0.36);
+}
+
+.modal-card {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.modal-card label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.modal-card label span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.modal-heading,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.modal-heading h2 {
+  margin-bottom: 0;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .data-table-wrap {

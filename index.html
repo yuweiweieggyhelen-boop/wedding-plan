@@ -104,12 +104,7 @@
               <h2 id="tasksTitle">任务看板</h2>
               <p>按阶段、负责人、截止日期推进备婚事项。</p>
             </div>
-            <form class="quick-form" id="taskForm">
-              <input name="title" placeholder="新增任务" required />
-              <input name="owner" placeholder="负责人" required />
-              <input name="due" type="date" required />
-              <button type="submit">添加</button>
-            </form>
+            <button class="primary-button" type="button" id="openTaskModal">添加任务</button>
           </div>
           <div class="board" id="taskBoard"></div>
         </section>
@@ -194,6 +189,38 @@
         </section>
       </main>
     </div>
+
+    <dialog class="modal" id="taskModal" aria-labelledby="taskModalTitle">
+      <form class="modal-card" id="taskForm" method="dialog">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">New Task</p>
+            <h2 id="taskModalTitle">添加任务</h2>
+          </div>
+          <button class="icon-button" type="button" id="closeTaskModal" aria-label="关闭">×</button>
+        </div>
+
+        <label>
+          <span>任务名称</span>
+          <input name="title" placeholder="例如：确认婚礼当天物料" required />
+        </label>
+
+        <label>
+          <span>任务内容</span>
+          <textarea name="details" rows="5" placeholder="写下具体要做什么、验收标准或注意事项" required></textarea>
+        </label>
+
+        <label>
+          <span>负责人</span>
+          <input name="owner" placeholder="例如：Helen / 伴娘 / 双方父母" required />
+        </label>
+
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" id="cancelTaskModal">取消</button>
+          <button class="primary-button" type="submit">保存任务</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="./app.js"></script>
   </body>
