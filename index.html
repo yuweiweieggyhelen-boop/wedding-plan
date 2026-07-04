@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>喜事计划局</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <span class="brand-mark">囍</span>
+          <div>
+            <strong>喜事计划局</strong>
+            <span>婚礼项目管理</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" id="navList">
+          <button class="nav-item active" data-view="overview">总览</button>
+          <button class="nav-item" data-view="tasks">任务</button>
+          <button class="nav-item" data-view="budget">预算</button>
+          <button class="nav-item" data-view="vendors">供应商</button>
+          <button class="nav-item" data-view="guests">宾客</button>
+          <button class="nav-item" data-view="timeline">当天流程</button>
+        </nav>
+
+        <div class="sidebar-note">
+          <span>下一步重点</span>
+          <strong id="sidebarFocus">确认婚礼场地尾款节点</strong>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Wedding PM</p>
+            <h1 id="pageTitle">总览仪表盘</h1>
+          </div>
+          <div class="wedding-date">
+            <label for="weddingDate">婚礼日期</label>
+            <input id="weddingDate" type="date" />
+          </div>
+        </header>
+
+        <section class="hero-panel" aria-label="项目概览">
+          <img src="./assets/wedding-planning-banner.png" alt="婚礼筹备桌面" />
+          <div class="hero-copy">
+            <span id="countdownLabel">距离婚礼还有</span>
+            <strong id="daysLeft">-- 天</strong>
+            <p>把任务、预算、宾客和当天流程放在同一个地方，减少反复确认。</p>
+          </div>
+        </section>
+
+        <section class="view active" id="overviewView" aria-labelledby="overviewTitle">
+          <h2 id="overviewTitle">项目状态</h2>
+          <div class="metric-grid">
+            <article class="metric">
+              <span>任务完成</span>
+              <strong id="taskProgress">0%</strong>
+              <div class="progress-track"><span id="taskProgressBar"></span></div>
+            </article>
+            <article class="metric">
+              <span>预算已用</span>
+              <strong id="budgetUsed">¥0</strong>
+              <small id="budgetTotal">总预算 ¥0</small>
+            </article>
+            <article class="metric">
+              <span>确认出席</span>
+              <strong id="guestConfirmed">0 人</strong>
+              <small id="guestTotal">宾客总数 0 人</small>
+            </article>
+            <article class="metric attention">
+              <span>待处理风险</span>
+              <strong id="riskCount">0 项</strong>
+              <small>逾期任务与超预算项</small>
+            </article>
+          </div>
+
+          <div class="two-column">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>本周优先事项</h3>
+                <button class="ghost-button" data-view-jump="tasks">看任务</button>
+              </div>
+              <div class="stack-list" id="priorityTasks"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>近期付款</h3>
+                <button class="ghost-button" data-view-jump="budget">看预算</button>
+              </div>
+              <div class="stack-list" id="upcomingPayments"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="tasksView" aria-labelledby="tasksTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="tasksTitle">任务看板</h2>
+              <p>按阶段、负责人、截止日期推进备婚事项。</p>
+            </div>
+            <form class="quick-form" id="taskForm">
+              <input name="title" placeholder="新增任务" required />
+              <input name="owner" placeholder="负责人" required />
+              <input name="due" type="date" required />
+              <button type="submit">添加</button>
+            </form>
+          </div>
+          <div class="board" id="taskBoard"></div>
+        </section>
+
+        <section class="view" id="budgetView" aria-labelledby="budgetTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="budgetTitle">预算管理</h2>
+              <p>记录预算、已付金额、尾款和付款日期。</p>
+            </div>
+            <form class="quick-form" id="budgetForm">
+              <input name="item" placeholder="费用项目" required />
+              <input name="planned" type="number" min="0" step="100" placeholder="预算" required />
+              <input name="paid" type="number" min="0" step="100" placeholder="已付" required />
+              <button type="submit">添加</button>
+            </form>
+          </div>
+          <div class="data-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>项目</th>
+                  <th>分类</th>
+                  <th>预算</th>
+                  <th>已付</th>
+                  <th>尾款</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="budgetTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="vendorsView" aria-labelledby="vendorsTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="vendorsTitle">供应商管理</h2>
+              <p>合同、联系人、报价和待确认事项集中管理。</p>
+            </div>
+          </div>
+          <div class="card-grid" id="vendorGrid"></div>
+        </section>
+
+        <section class="view" id="guestsView" aria-labelledby="guestsTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="guestsTitle">宾客管理</h2>
+              <p>邀请、确认出席、桌号和特殊备注一处维护。</p>
+            </div>
+            <form class="quick-form" id="guestForm">
+              <input name="name" placeholder="宾客姓名" required />
+              <input name="group" placeholder="分组" required />
+              <input name="table" placeholder="桌号" required />
+              <button type="submit">添加</button>
+            </form>
+          </div>
+          <div class="data-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>分组</th>
+                  <th>出席</th>
+                  <th>桌号</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="guestTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="timelineView" aria-labelledby="timelineTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="timelineTitle">婚礼当天流程</h2>
+              <p>把时间、负责人和物料检查放进执行表。</p>
+            </div>
+          </div>
+          <div class="timeline" id="dayTimeline"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
