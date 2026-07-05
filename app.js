@@ -1,5 +1,6 @@
 const STORAGE_KEY = "wedding-pm-state-v2";
 const USER_STORAGE_KEY = "wedding-pm-user-v1";
+const ACTIVE_WORKSPACE_KEY = "wedding-pm-active-workspace-v1";
 const VENDOR_DB_NAME = "wedding-pm-vendor-files";
 const VENDOR_STORE = "caseImages";
 const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
@@ -9,6 +10,8 @@ const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBL
 
 const initialState = {
   weddingDate: "2026-10-18",
+  cover: "",
+  coverY: 50,
   tasks: [],
   budget: [],
   vendors: [],
@@ -25,6 +28,7 @@ let state = loadState();
 let currentUser = loadUser();
 let currentSession = null;
 let currentWorkspace = null;
+let workspaceMembers = [];
 let pendingInvites = [];
 let appReady = false;
 let remoteSaveTimer = 0;
@@ -63,6 +67,8 @@ function loadState() {
 }
 
 function normalizeState(value) {
+  if (!("cover" in value)) value.cover = "";
+  if (!("coverY" in value)) value.coverY = 50;
   if (!value.seating) value.seating = structuredClone(initialState.seating);
   if (!Array.isArray(value.seating.tables) || !value.seating.tables.length) {
     value.seating.tables = structuredClone(initialState.seating.tables);
@@ -92,6 +98,15 @@ function loadUser() {
 
 function saveUser() {
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser));
+}
+
+function activeWorkspaceStorageKey(user) {
+  return `${ACTIVE_WORKSPACE_KEY}:${user.id}`;
+}
+
+function rememberActiveWorkspace(user, workspaceId) {
+  if (!user?.id || !workspaceId) return;
+  localStorage.setItem(activeWorkspaceStorageKey(user), workspaceId);
 }
 
 function text(value) {
@@ -248,15 +263,38 @@ async function createWorkspaceForUser(user) {
 async function loadCurrentWorkspace(user) {
   const { data: memberships, error } = await supabaseClient
     .from("wedding_memberships")
-    .select("role, workspace:wedding_workspaces(id, name, state, updated_at)")
+    .select("role, created_at, workspace:wedding_workspaces(id, name, state, updated_at)")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
   if (error) throw error;
 
-  const workspace = memberships?.[0]?.workspace || (await createWorkspaceForUser(user));
+  const savedWorkspaceId = localStorage.getItem(activeWorkspaceStorageKey(user));
+  const savedMembership = memberships?.find((item) => item.workspace?.id === savedWorkspaceId);
+  const workspace = savedMembership?.workspace || memberships?.[0]?.workspace || (await createWorkspaceForUser(user));
+  rememberActiveWorkspace(user, workspace.id);
   currentWorkspace = workspace;
   state = normalizeState({ ...structuredClone(initialState), ...(workspace.state || {}) });
+  if (!state.cover && currentUser.cover) {
+    state.cover = currentUser.cover;
+    state.coverY = currentUser.coverY || 50;
+    workspace.state = state;
+    await saveWorkspaceState();
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  await loadWorkspaceMembers();
+}
+
+async function loadWorkspaceMembers() {
+  workspaceMembers = [];
+  if (!currentWorkspace?.id) return;
+  const { data, error } = await supabaseClient.rpc("get_workspace_members", {
+    workspace_id: currentWorkspace.id
+  });
+  if (error) {
+    console.warn("读取协作成员失败", error.message);
+    return;
+  }
+  workspaceMembers = data || [];
 }
 
 async function loadInvitations() {
@@ -314,7 +352,7 @@ async function sendInvite(email) {
 
 async function acceptInvite(invitationId) {
   if (!currentSession?.user) return false;
-  const { error } = await supabaseClient.rpc("accept_workspace_invitation", {
+  const { data: workspace, error } = await supabaseClient.rpc("accept_workspace_invitation", {
     invitation_id: invitationId
   });
   if (error) {
@@ -322,6 +360,7 @@ async function acceptInvite(invitationId) {
     return false;
   }
 
+  if (workspace?.id) rememberActiveWorkspace(currentSession.user, workspace.id);
   await loadCurrentWorkspace(currentSession.user);
   await loadInvitations();
   renderAll();
@@ -618,6 +657,7 @@ function renderUser() {
   document.querySelector("#workspaceName").textContent = currentWorkspace?.name || "未进入项目";
   document.querySelector("#accountEmail").textContent = currentUser.email || "--";
   document.querySelector("#accountWorkspace").textContent = currentWorkspace?.name || "--";
+  document.querySelector("#accountMemberCount").textContent = workspaceMembers.length ? `${workspaceMembers.length} 人` : "1 人";
   document.querySelector("#profileNameInput").value = currentUser.name || "";
   document.querySelector("#workspaceNameInput").value = currentWorkspace?.name || "";
   const avatar = document.querySelector("#accountAvatar");
@@ -627,9 +667,13 @@ function renderUser() {
     avatar.textContent = currentUser.name ? currentUser.name.trim().slice(0, 1).toUpperCase() : "囍";
   }
 
+  document.querySelector("#sidebarMembers").innerHTML = renderMemberStack();
+
   const heroPhoto = document.querySelector("#heroPhoto");
-  if (currentUser.cover) {
-    heroPhoto.innerHTML = `<img class="cover-shift-image" src="${currentUser.cover}" alt="婚礼封面照片" style="transform: translateY(${coverOffset(currentUser.coverY)}%);" />`;
+  const cover = state.cover || currentUser.cover;
+  const coverY = state.cover ? state.coverY : currentUser.coverY;
+  if (cover) {
+    heroPhoto.innerHTML = `<img class="cover-shift-image" src="${cover}" alt="婚礼封面照片" style="transform: translateY(${coverOffset(coverY)}%);" />`;
   } else {
     heroPhoto.innerHTML = "<span>封面照片</span>";
   }
@@ -650,10 +694,35 @@ function renderUser() {
     .join("") || emptyState("暂无新的协作邀请");
 }
 
+function memberInitial(member) {
+  return (member.display_name || member.email || "协").trim().slice(0, 1).toUpperCase();
+}
+
+function renderMemberStack() {
+  const members = workspaceMembers.length
+    ? workspaceMembers
+    : [{ user_id: currentSession?.user?.id, email: currentUser.email, display_name: currentUser.name, role: "owner" }];
+  const visibleMembers = members.slice(0, 4);
+  const avatars = visibleMembers
+    .map((member) => {
+      const isCurrentUser = member.user_id === currentSession?.user?.id;
+      const label = member.display_name || member.email || "协作成员";
+      const image = isCurrentUser ? currentUser.avatar : "";
+      return `
+        <span class="member-avatar" title="${text(label)}">
+          ${image ? `<img src="${image}" alt="${text(label)} 的头像" />` : text(memberInitial(member))}
+        </span>
+      `;
+    })
+    .join("");
+  const more = members.length > visibleMembers.length ? `<span class="member-avatar member-more">+${members.length - visibleMembers.length}</span>` : "";
+  return `${avatars}${more}`;
+}
+
 function renderCoverPreview() {
   const preview = document.querySelector("#coverPreview");
-  const cover = pendingCover || currentUser.cover;
-  const y = Number(document.querySelector("#coverPositionInput").value || currentUser.coverY || 50);
+  const cover = pendingCover || state.cover || currentUser.cover;
+  const y = Number(document.querySelector("#coverPositionInput").value || state.coverY || currentUser.coverY || 50);
   if (!cover) {
     preview.innerHTML = "<span>选择图片后预览</span>";
     return;
@@ -1073,6 +1142,7 @@ document.querySelector("#signOutButton").addEventListener("click", async () => {
   if (supabaseClient) await supabaseClient.auth.signOut();
   currentSession = null;
   currentWorkspace = null;
+  workspaceMembers = [];
   pendingInvites = [];
   currentUser = { name: "", email: "", avatar: "", cover: "", coverY: 50, mediaReady: false };
   saveUser();
@@ -1083,8 +1153,8 @@ document.querySelector("#signOutButton").addEventListener("click", async () => {
 document.querySelector("#uploadCoverButton").addEventListener("click", () => {
   pendingCover = "";
   openModal("coverModal");
-  document.querySelector("#coverPositionInput").value = currentUser.coverY || 50;
-  document.querySelector("#coverFileLabel").textContent = currentUser.cover ? "更换图片" : "选择图片";
+  document.querySelector("#coverPositionInput").value = state.coverY || currentUser.coverY || 50;
+  document.querySelector("#coverFileLabel").textContent = state.cover || currentUser.cover ? "更换图片" : "选择图片";
   renderCoverPreview();
 });
 
@@ -1104,12 +1174,15 @@ document.querySelector("#coverPositionInput").addEventListener("input", renderCo
 
 document.querySelector("#coverForm").addEventListener("submit", (event) => {
   event.preventDefault();
+  state.cover = pendingCover || state.cover || currentUser.cover;
+  state.coverY = Number(document.querySelector("#coverPositionInput").value || 50);
   currentUser = {
     ...currentUser,
-    cover: pendingCover || currentUser.cover,
-    coverY: Number(document.querySelector("#coverPositionInput").value || 50),
+    cover: state.cover,
+    coverY: state.coverY,
     mediaReady: true
   };
+  saveState();
   saveUser();
   closeModal("coverModal");
   renderAll();
