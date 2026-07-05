@@ -313,32 +313,20 @@ async function sendInvite(email) {
 }
 
 async function acceptInvite(invitationId) {
-  const invitation = pendingInvites.find((item) => item.id === invitationId);
-  if (!invitation || !currentSession?.user) return;
-
-  const { error: memberError } = await supabaseClient.from("wedding_memberships").insert({
-    workspace_id: invitation.workspace.id,
-    user_id: currentSession.user.id,
-    role: "member"
+  if (!currentSession?.user) return false;
+  const { error } = await supabaseClient.rpc("accept_workspace_invitation", {
+    invitation_id: invitationId
   });
-  if (memberError && memberError.code !== "23505") {
-    window.alert(`加入协作失败：${memberError.message}`);
-    return;
-  }
-
-  const { error: inviteError } = await supabaseClient
-    .from("wedding_invitations")
-    .update({ status: "accepted", responded_at: new Date().toISOString() })
-    .eq("id", invitationId);
-  if (inviteError) {
-    window.alert(`更新邀请失败：${inviteError.message}`);
-    return;
+  if (error) {
+    window.alert(`加入协作失败：${error.message}`);
+    return false;
   }
 
   await loadCurrentWorkspace(currentSession.user);
   await loadInvitations();
   renderAll();
   closeModal("accountModal");
+  return true;
 }
 
 function daysBetween(dateString) {
@@ -817,7 +805,13 @@ document.body.addEventListener("click", async (event) => {
 
   const acceptButton = event.target.closest("[data-accept-invite]");
   if (acceptButton) {
-    await acceptInvite(acceptButton.dataset.acceptInvite);
+    acceptButton.disabled = true;
+    acceptButton.textContent = "加入中";
+    const accepted = await acceptInvite(acceptButton.dataset.acceptInvite);
+    if (!accepted) {
+      acceptButton.disabled = false;
+      acceptButton.textContent = "同意";
+    }
   }
 });
 

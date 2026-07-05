@@ -169,3 +169,49 @@ end;
 $$;
 
 grant execute on function public.create_user_workspace(text, jsonb) to authenticated;
+
+create or replace function public.accept_workspace_invitation(invitation_id uuid)
+returns public.wedding_workspaces
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  p_invitation_id alias for invitation_id;
+  target_invitation public.wedding_invitations;
+  target_workspace public.wedding_workspaces;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select *
+  into target_invitation
+  from public.wedding_invitations
+  where id = p_invitation_id
+    and invitee_email = lower(auth.jwt() ->> 'email')
+    and status = 'pending';
+
+  if not found then
+    raise exception 'invitation not found';
+  end if;
+
+  insert into public.wedding_memberships (workspace_id, user_id, role)
+  values (target_invitation.workspace_id, auth.uid(), 'member')
+  on conflict (workspace_id, user_id) do nothing;
+
+  update public.wedding_invitations
+  set status = 'accepted',
+      responded_at = now()
+  where id = target_invitation.id;
+
+  select *
+  into target_workspace
+  from public.wedding_workspaces
+  where id = target_invitation.workspace_id;
+
+  return target_workspace;
+end;
+$$;
+
+grant execute on function public.accept_workspace_invitation(uuid) to authenticated;
