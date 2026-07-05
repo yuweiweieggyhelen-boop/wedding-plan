@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>喜事计划局</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -14,29 +14,29 @@
           <span class="brand-mark">囍</span>
           <div>
             <strong>喜事计划局</strong>
-            <span>婚礼项目管理</span>
+            <span>Wedding PM</span>
           </div>
         </div>
 
         <nav class="nav-list" id="navList">
-          <button class="nav-item active" data-view="overview">总览</button>
-          <button class="nav-item" data-view="tasks">任务</button>
-          <button class="nav-item" data-view="budget">预算</button>
-          <button class="nav-item" data-view="vendors">供应商</button>
-          <button class="nav-item" data-view="guests">宾客</button>
-          <button class="nav-item" data-view="timeline">当天流程</button>
+          <button class="nav-item active" data-view="overview"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>总览</button>
+          <button class="nav-item" data-view="tasks"><span class="material-symbols-outlined" aria-hidden="true">checklist</span>任务</button>
+          <button class="nav-item" data-view="budget"><span class="material-symbols-outlined" aria-hidden="true">payments</span>预算</button>
+          <button class="nav-item" data-view="vendors"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>供应商</button>
+          <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
+          <button class="nav-item" data-view="timeline"><span class="material-symbols-outlined" aria-hidden="true">event</span>当天流程</button>
         </nav>
 
         <div class="sidebar-note">
           <span>下一步重点</span>
-          <strong id="sidebarFocus">确认婚礼场地尾款节点</strong>
+          <strong id="sidebarFocus">确认下一项任务</strong>
         </div>
       </aside>
 
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Wedding PM</p>
+            <p class="eyebrow">Wedding Project</p>
             <h1 id="pageTitle">总览仪表盘</h1>
           </div>
           <div class="wedding-date">
@@ -46,11 +46,10 @@
         </header>
 
         <section class="hero-panel" aria-label="项目概览">
-          <img src="./assets/wedding-planning-banner.png" alt="婚礼筹备桌面" />
-          <div class="hero-copy">
+          <div>
             <span id="countdownLabel">距离婚礼还有</span>
             <strong id="daysLeft">-- 天</strong>
-            <p>把任务、预算、宾客和当天流程放在同一个地方，减少反复确认。</p>
+            <p>白底、清晰、可维护。后续你重新上传自己的封面图后，我再把顶部视觉替换成你的图片。</p>
           </div>
         </section>
 
@@ -73,9 +72,9 @@
               <small id="guestTotal">宾客总数 0 人</small>
             </article>
             <article class="metric attention">
-              <span>待处理风险</span>
-              <strong id="riskCount">0 项</strong>
-              <small>逾期任务与超预算项</small>
+              <span>最终供应商</span>
+              <strong id="selectedVendorCount">0 个</strong>
+              <small>已进入最终选择区</small>
             </article>
           </div>
 
@@ -83,7 +82,7 @@
             <section class="panel">
               <div class="panel-heading">
                 <h3>本周优先事项</h3>
-                <button class="ghost-button" data-view-jump="tasks">看任务</button>
+                <button class="text-button" data-view-jump="tasks">看任务</button>
               </div>
               <div class="stack-list" id="priorityTasks"></div>
             </section>
@@ -91,7 +90,7 @@
             <section class="panel">
               <div class="panel-heading">
                 <h3>近期付款</h3>
-                <button class="ghost-button" data-view-jump="budget">看预算</button>
+                <button class="text-button" data-view-jump="budget">看预算</button>
               </div>
               <div class="stack-list" id="upcomingPayments"></div>
             </section>
@@ -104,7 +103,7 @@
               <h2 id="tasksTitle">任务看板</h2>
               <p>按阶段、负责人、截止日期推进备婚事项。</p>
             </div>
-            <button class="primary-button" type="button" id="openTaskModal">添加任务</button>
+            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
           </div>
           <div class="board" id="taskBoard"></div>
         </section>
@@ -113,25 +112,22 @@
           <div class="section-heading">
             <div>
               <h2 id="budgetTitle">预算管理</h2>
-              <p>记录预算、已付金额、尾款和付款日期。</p>
+              <p>先建预算项目，再根据供应商报价和付款节点持续更新已付与尾款。</p>
             </div>
-            <form class="quick-form" id="budgetForm">
-              <input name="item" placeholder="费用项目" required />
-              <input name="planned" type="number" min="0" step="100" placeholder="预算" required />
-              <input name="paid" type="number" min="0" step="100" placeholder="已付" required />
-              <button type="submit">添加</button>
-            </form>
+            <button class="primary-button" type="button" data-open-modal="budgetModal">添加预算</button>
           </div>
+          <div class="budget-summary" id="budgetSummary"></div>
           <div class="data-table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>项目</th>
-                  <th>分类</th>
+                  <th>类别</th>
                   <th>预算</th>
                   <th>已付</th>
                   <th>尾款</th>
                   <th>状态</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody id="budgetTable"></tbody>
@@ -143,34 +139,47 @@
           <div class="section-heading">
             <div>
               <h2 id="vendorsTitle">供应商管理</h2>
-              <p>合同、联系人、报价和待确认事项集中管理。</p>
+              <p>左侧维护供应商库；点“最终选择”后，供应商会进入右侧确认区。</p>
             </div>
+            <button class="primary-button" type="button" data-open-modal="vendorModal">添加供应商</button>
           </div>
-          <div class="card-grid" id="vendorGrid"></div>
+          <div class="vendor-layout">
+            <section class="vendor-section">
+              <div class="panel-heading">
+                <h3>供应商库</h3>
+                <span class="count-label" id="vendorLibraryCount">0</span>
+              </div>
+              <div class="vendor-grid" id="vendorLibrary"></div>
+            </section>
+            <section class="vendor-section selected">
+              <div class="panel-heading">
+                <h3>最终选择供应商</h3>
+                <span class="count-label" id="vendorSelectedCount">0</span>
+              </div>
+              <div class="vendor-grid selected-list" id="vendorSelected"></div>
+            </section>
+          </div>
         </section>
 
         <section class="view" id="guestsView" aria-labelledby="guestsTitle">
           <div class="section-heading">
             <div>
               <h2 id="guestsTitle">宾客管理</h2>
-              <p>邀请、确认出席、桌号和特殊备注一处维护。</p>
+              <p>列表维护宾客信息，最右侧一键确认是否出席。</p>
             </div>
-            <form class="quick-form" id="guestForm">
-              <input name="name" placeholder="宾客姓名" required />
-              <input name="group" placeholder="分组" required />
-              <input name="table" placeholder="桌号" required />
-              <button type="submit">添加</button>
-            </form>
+            <button class="primary-button" type="button" data-open-modal="guestModal">添加宾客</button>
           </div>
           <div class="data-table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>姓名</th>
-                  <th>分组</th>
-                  <th>出席</th>
-                  <th>桌号</th>
+                  <th>类别</th>
+                  <th>+1</th>
+                  <th>住宿</th>
                   <th>备注</th>
+                  <th>操作</th>
+                  <th>出席</th>
                 </tr>
               </thead>
               <tbody id="guestTable"></tbody>
@@ -191,33 +200,93 @@
     </div>
 
     <dialog class="modal" id="taskModal" aria-labelledby="taskModalTitle">
-      <form class="modal-card" id="taskForm" method="dialog">
+      <form class="modal-card" id="taskForm">
         <div class="modal-heading">
           <div>
             <p class="eyebrow">New Task</p>
             <h2 id="taskModalTitle">添加任务</h2>
           </div>
-          <button class="icon-button" type="button" id="closeTaskModal" aria-label="关闭">×</button>
+          <button class="icon-button" type="button" data-close-modal="taskModal" aria-label="关闭">×</button>
         </div>
-
-        <label>
-          <span>任务名称</span>
-          <input name="title" placeholder="例如：确认婚礼当天物料" required />
-        </label>
-
-        <label>
-          <span>任务内容</span>
-          <textarea name="details" rows="5" placeholder="写下具体要做什么、验收标准或注意事项" required></textarea>
-        </label>
-
-        <label>
-          <span>负责人</span>
-          <input name="owner" placeholder="例如：Helen / 伴娘 / 双方父母" required />
-        </label>
-
+        <label><span>任务名称</span><input name="title" required /></label>
+        <label><span>任务内容</span><textarea name="details" rows="5" required></textarea></label>
+        <label><span>负责人</span><input name="owner" required /></label>
         <div class="modal-actions">
-          <button class="ghost-button" type="button" id="cancelTaskModal">取消</button>
+          <button class="secondary-button" type="button" data-close-modal="taskModal">取消</button>
           <button class="primary-button" type="submit">保存任务</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal wide" id="vendorModal" aria-labelledby="vendorModalTitle">
+      <form class="modal-card" id="vendorForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">New Vendor</p>
+            <h2 id="vendorModalTitle">添加供应商</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="vendorModal" aria-label="关闭">×</button>
+        </div>
+        <div class="form-grid">
+          <label><span>供应商名称</span><input name="name" required /></label>
+          <label><span>供应商类别</span><input name="type" placeholder="摄影 / 婚庆 / 酒店" required /></label>
+          <label><span>供应商排期</span><input name="schedule" placeholder="例如：10月18日全天可用" required /></label>
+          <label><span>联系人名称</span><input name="contactName" required /></label>
+          <label><span>联系人电话</span><input name="phone" required /></label>
+          <label><span>报价</span><input name="quote" type="number" min="0" step="100" required /></label>
+        </div>
+        <label>
+          <span>案例图片</span>
+          <input name="caseImage" type="file" accept="image/*" required />
+          <small>支持图片文件，单个文件最大 100MB。图片保存在浏览器本地。</small>
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="vendorModal">取消</button>
+          <button class="primary-button" type="submit">保存供应商</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="guestModal" aria-labelledby="guestModalTitle">
+      <form class="modal-card" id="guestForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">New Guest</p>
+            <h2 id="guestModalTitle">添加宾客</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="guestModal" aria-label="关闭">×</button>
+        </div>
+        <label><span>宾客姓名</span><input name="name" required /></label>
+        <label><span>宾客类别</span><input name="group" placeholder="女方亲友 / 男方亲友 / 朋友 / 同事" required /></label>
+        <div class="check-row">
+          <label><input name="plusOne" type="checkbox" /> 是否有 +1</label>
+          <label><input name="lodging" type="checkbox" /> 是否需要住宿</label>
+        </div>
+        <label><span>备注</span><textarea name="note" rows="4"></textarea></label>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="guestModal">取消</button>
+          <button class="primary-button" type="submit">保存宾客</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="budgetModal" aria-labelledby="budgetModalTitle">
+      <form class="modal-card" id="budgetForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">New Budget</p>
+            <h2 id="budgetModalTitle">添加预算项目</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="budgetModal" aria-label="关闭">×</button>
+        </div>
+        <label><span>项目</span><input name="item" required /></label>
+        <label><span>类别</span><input name="category" placeholder="场地 / 影像 / 造型 / 采购" required /></label>
+        <label><span>预算</span><input name="planned" type="number" min="0" step="100" required /></label>
+        <label><span>已付</span><input name="paid" type="number" min="0" step="100" value="0" required /></label>
+        <label><span>尾款</span><input name="balance" type="number" min="0" step="100" value="0" required /></label>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="budgetModal">取消</button>
+          <button class="primary-button" type="submit">保存预算</button>
         </div>
       </form>
     </dialog>

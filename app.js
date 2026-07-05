@@ -1,45 +1,41 @@
-const STORAGE_KEY = "wedding-pm-state-v1";
+const STORAGE_KEY = "wedding-pm-state-v2";
+const VENDOR_DB_NAME = "wedding-pm-vendor-files";
+const VENDOR_STORE = "caseImages";
+const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
 
 const initialState = {
   weddingDate: "2026-10-18",
   tasks: [
-    { id: 1, title: "确认婚宴酒店合同与尾款节点", details: "核对合同金额、菜单、场地使用时间和尾款支付日期。", owner: "Helen", due: "2026-07-12", phase: "场地", status: "doing", priority: "高" },
-    { id: 2, title: "筛选摄影摄像作品集并约档期", details: "对比样片风格、交付内容、双机位价格和婚礼当天档期。", owner: "两人", due: "2026-07-18", phase: "供应商", status: "todo", priority: "高" },
-    { id: 3, title: "整理第一版宾客名单", details: "先列出双方亲友、朋友和同事，后续再确认是否出席。", owner: "双方父母", due: "2026-07-21", phase: "宾客", status: "doing", priority: "中" },
-    { id: 4, title: "确认婚礼主色与花艺方向", details: "确定主色、花材倾向、迎宾区和仪式区基础风格。", owner: "Helen", due: "2026-08-02", phase: "设计", status: "review", priority: "中" },
-    { id: 5, title: "试妆并记录妆造反馈", details: "试妆后记录底妆、发型、头饰、换装时间和需要调整的点。", owner: "Helen", due: "2026-08-16", phase: "造型", status: "todo", priority: "中" },
-    { id: 6, title: "准备婚礼当天物料箱清单", details: "整理戒指、誓词卡、红包、签到用品、备用针线和充电器。", owner: "伴娘", due: "2026-10-10", phase: "执行", status: "done", priority: "低" }
+    { id: 1, title: "确认婚宴酒店合同与尾款节点", details: "核对合同金额、菜单、场地使用时间和尾款支付日期。", owner: "Helen", due: "2026-07-12", phase: "场地", status: "doing" },
+    { id: 2, title: "筛选摄影摄像作品集并约档期", details: "对比样片风格、交付内容、双机位价格和婚礼当天档期。", owner: "两人", due: "2026-07-18", phase: "供应商", status: "todo" },
+    { id: 3, title: "整理第一版宾客名单", details: "先列出双方亲友、朋友和同事，后续再确认是否出席。", owner: "双方父母", due: "2026-07-21", phase: "宾客", status: "doing" }
   ],
   budget: [
-    { id: 1, item: "婚宴酒店", category: "场地", planned: 88000, paid: 30000, due: "2026-09-18" },
-    { id: 2, item: "婚庆策划", category: "策划", planned: 36000, paid: 12000, due: "2026-08-30" },
-    { id: 3, item: "摄影摄像", category: "影像", planned: 22000, paid: 6000, due: "2026-09-28" },
-    { id: 4, item: "婚纱礼服", category: "造型", planned: 18000, paid: 9000, due: "2026-08-16" },
-    { id: 5, item: "伴手礼与喜糖", category: "采购", planned: 12000, paid: 0, due: "2026-09-20" }
+    { id: 1, item: "婚宴酒店", category: "场地", planned: 88000, paid: 30000, balance: 58000 },
+    { id: 2, item: "婚庆策划", category: "策划", planned: 36000, paid: 12000, balance: 24000 },
+    { id: 3, item: "摄影摄像", category: "影像", planned: 22000, paid: 6000, balance: 16000 }
   ],
   vendors: [
-    { id: 1, name: "湖畔宴会厅", type: "婚宴酒店", contact: "周经理 138-0000-0001", quote: 88000, next: "确认菜单升级与停车位" },
-    { id: 2, name: "白昼婚礼策划", type: "婚庆策划", contact: "Mia 138-0000-0002", quote: 36000, next: "提交舞台平面图" },
-    { id: 3, name: "Frame 27 Studio", type: "摄影摄像", contact: "Leo 138-0000-0003", quote: 22000, next: "锁定双机位档期" },
-    { id: 4, name: "Luna Bridal", type: "婚纱礼服", contact: "Nora 138-0000-0004", quote: 18000, next: "预约二次试纱" }
+    { id: 1, name: "湖畔宴会厅", type: "婚宴酒店", schedule: "婚礼日全天可用", contactName: "周经理", phone: "138-0000-0001", quote: 88000, selected: true, imageName: "" },
+    { id: 2, name: "白昼婚礼策划", type: "婚庆策划", schedule: "待确认现场勘测", contactName: "Mia", phone: "138-0000-0002", quote: 36000, selected: false, imageName: "" }
   ],
   guests: [
-    { id: 1, name: "李阿姨", group: "女方亲友", confirmed: true, table: "A03", note: "素食" },
-    { id: 2, name: "王叔叔", group: "男方亲友", confirmed: true, table: "B02", note: "需停车" },
-    { id: 3, name: "陈同学", group: "朋友", confirmed: false, table: "待定", note: "等航班" },
-    { id: 4, name: "Grace", group: "同事", confirmed: true, table: "C01", note: "" }
+    { id: 1, name: "李阿姨", group: "女方亲友", plusOne: false, lodging: false, note: "素食", confirmed: true },
+    { id: 2, name: "王叔叔", group: "男方亲友", plusOne: true, lodging: false, note: "需停车", confirmed: true },
+    { id: 3, name: "陈同学", group: "朋友", plusOne: false, lodging: true, note: "等航班", confirmed: false }
   ],
   timeline: [
     { time: "07:30", title: "新娘妆造开始", owner: "化妆师", check: "晨袍、首饰、捧花" },
     { time: "10:30", title: "接亲与合影", owner: "伴郎伴娘", check: "红包、堵门道具、摄影到位" },
     { time: "14:00", title: "场地彩排", owner: "婚庆统筹", check: "音响、灯光、走位" },
     { time: "17:30", title: "迎宾签到", owner: "签到负责人", check: "签到本、座位表、伴手礼" },
-    { time: "18:18", title: "仪式开始", owner: "主持人", check: "戒指、誓词卡、音乐" },
-    { time: "20:30", title: "送客与物料回收", owner: "双方家人", check: "礼金、衣物、影像素材" }
+    { time: "18:18", title: "仪式开始", owner: "主持人", check: "戒指、誓词卡、音乐" }
   ]
 };
 
 let state = loadState();
+let vendorDbPromise;
+let vendorImageUrls = new Map();
 
 const views = {
   overview: document.querySelector("#overviewView"),
@@ -73,10 +69,6 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function money(value) {
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
-
 function text(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -86,15 +78,61 @@ function text(value) {
     .replaceAll("'", "&#039;");
 }
 
+function money(value) {
+  return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
+}
+
+function openVendorDb() {
+  if (vendorDbPromise) return vendorDbPromise;
+  vendorDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(VENDOR_DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(VENDOR_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return vendorDbPromise;
+}
+
+async function saveVendorImage(id, file) {
+  const db = await openVendorDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(VENDOR_STORE, "readwrite");
+    tx.objectStore(VENDOR_STORE).put(file, String(id));
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function deleteVendorImage(id) {
+  const db = await openVendorDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(VENDOR_STORE, "readwrite");
+    tx.objectStore(VENDOR_STORE).delete(String(id));
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getVendorImageUrl(id) {
+  if (vendorImageUrls.has(id)) return vendorImageUrls.get(id);
+  const db = await openVendorDb();
+  const blob = await new Promise((resolve, reject) => {
+    const tx = db.transaction(VENDOR_STORE, "readonly");
+    const request = tx.objectStore(VENDOR_STORE).get(String(id));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  if (!blob) return "";
+  const url = URL.createObjectURL(blob);
+  vendorImageUrls.set(id, url);
+  return url;
+}
+
 function daysBetween(dateString) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(dateString);
   return Math.ceil((target - today) / 86400000);
-}
-
-function isOverdue(task) {
-  return task.status !== "done" && daysBetween(task.due) < 0;
 }
 
 function setView(viewName) {
@@ -109,8 +147,7 @@ function renderOverview() {
   const planned = state.budget.reduce((sum, item) => sum + Number(item.planned), 0);
   const paid = state.budget.reduce((sum, item) => sum + Number(item.paid), 0);
   const confirmed = state.guests.filter((guest) => guest.confirmed).length;
-  const overBudget = state.budget.filter((item) => Number(item.paid) > Number(item.planned)).length;
-  const risks = state.tasks.filter(isOverdue).length + overBudget;
+  const selectedVendors = state.vendors.filter((vendor) => vendor.selected).length;
   const daysLeft = daysBetween(state.weddingDate);
 
   document.querySelector("#daysLeft").textContent = daysLeft >= 0 ? `${daysLeft} 天` : `已完成 ${Math.abs(daysLeft)} 天`;
@@ -120,20 +157,21 @@ function renderOverview() {
   document.querySelector("#budgetTotal").textContent = `总预算 ${money(planned)}`;
   document.querySelector("#guestConfirmed").textContent = `${confirmed} 人`;
   document.querySelector("#guestTotal").textContent = `宾客总数 ${state.guests.length} 人`;
-  document.querySelector("#riskCount").textContent = `${risks} 项`;
+  document.querySelector("#selectedVendorCount").textContent = `${selectedVendors} 个`;
 
   const activeTasks = state.tasks
     .filter((task) => task.status !== "done")
     .sort((a, b) => new Date(a.due) - new Date(b.due))
     .slice(0, 4);
-  document.querySelector("#priorityTasks").innerHTML = activeTasks.map(renderMiniTask).join("");
+  document.querySelector("#priorityTasks").innerHTML = activeTasks.map(renderMiniTask).join("") || emptyState("暂无待办任务");
   document.querySelector("#sidebarFocus").textContent = activeTasks[0]?.title || "所有事项都已完成";
 
-  const payments = state.budget
-    .filter((item) => item.planned - item.paid > 0)
-    .sort((a, b) => new Date(a.due) - new Date(b.due))
-    .slice(0, 4);
-  document.querySelector("#upcomingPayments").innerHTML = payments.map(renderPayment).join("");
+  const payments = state.budget.filter((item) => Number(item.balance) > 0).slice(0, 4);
+  document.querySelector("#upcomingPayments").innerHTML = payments.map(renderPayment).join("") || emptyState("暂无待付尾款");
+}
+
+function emptyState(label) {
+  return `<div class="empty-state">${text(label)}</div>`;
 }
 
 function renderMiniTask(task) {
@@ -142,8 +180,8 @@ function renderMiniTask(task) {
   return `
     <article class="list-item">
       <div>
-        <strong>${task.title}</strong>
-        <span>${task.owner} · ${task.phase}</span>
+        <strong>${text(task.title)}</strong>
+        <span>${text(task.owner)} · ${text(task.phase)}</span>
       </div>
       <span class="${days < 0 ? "pill warn" : "pill"}">${dueText}</span>
     </article>
@@ -154,10 +192,10 @@ function renderPayment(item) {
   return `
     <article class="list-item">
       <div>
-        <strong>${item.item}</strong>
-        <span>${item.category} · ${item.due}</span>
+        <strong>${text(item.item)}</strong>
+        <span>${text(item.category)}</span>
       </div>
-      <span class="pill">${money(item.planned - item.paid)}</span>
+      <span class="pill">${money(item.balance)}</span>
     </article>
   `;
 }
@@ -172,74 +210,96 @@ function renderTasks() {
 
   document.querySelector("#taskBoard").innerHTML = labels
     .map(([status, label]) => {
-      const cards = state.tasks
-        .filter((task) => task.status === status)
-        .sort((a, b) => new Date(a.due) - new Date(b.due))
-        .map(renderTaskCard)
-        .join("");
-      return `<section class="board-column"><h3>${label}</h3>${cards}</section>`;
+      const cards = state.tasks.filter((task) => task.status === status).map(renderTaskCard).join("");
+      return `<section class="board-column"><h3>${label}</h3>${cards || emptyState("暂无任务")}</section>`;
     })
     .join("");
 }
 
 function renderTaskCard(task) {
   const days = daysBetween(task.due);
-  const details = task.details || "暂无任务内容";
   return `
     <article class="task-card">
       <div class="task-card-heading">
         <strong>${text(task.title)}</strong>
-        <button class="delete-button" type="button" data-task-delete="${task.id}" aria-label="删除任务">删除</button>
+        <button class="delete-button" type="button" data-task-delete="${task.id}">删除</button>
       </div>
-      <p>${text(details)}</p>
+      <p>${text(task.details || "暂无任务内容")}</p>
       <div class="task-meta">
         <span class="pill">${text(task.owner)}</span>
-        <span class="pill">${text(task.phase)}</span>
-        <span class="${days < 0 && task.status !== "done" ? "pill warn" : "pill"}">${task.due}</span>
+        <span class="pill">${text(task.phase || "新事项")}</span>
+        <span class="${days < 0 && task.status !== "done" ? "pill warn" : "pill"}">${text(task.due)}</span>
       </div>
       <div class="task-actions">
-        <button class="item-action" data-task-move="${task.id}">推进</button>
-        <button class="item-action" data-task-done="${task.id}">完成</button>
+        <button class="secondary-button" type="button" data-task-move="${task.id}">推进</button>
+        <button class="secondary-button" type="button" data-task-done="${task.id}">完成</button>
       </div>
     </article>
   `;
 }
 
 function renderBudget() {
+  const totalPlanned = state.budget.reduce((sum, item) => sum + Number(item.planned), 0);
+  const totalPaid = state.budget.reduce((sum, item) => sum + Number(item.paid), 0);
+  const totalBalance = state.budget.reduce((sum, item) => sum + Number(item.balance), 0);
+  document.querySelector("#budgetSummary").innerHTML = `
+    <article><span>总预算</span><strong>${money(totalPlanned)}</strong></article>
+    <article><span>已付</span><strong>${money(totalPaid)}</strong></article>
+    <article><span>尾款</span><strong>${money(totalBalance)}</strong></article>
+  `;
+
   document.querySelector("#budgetTable").innerHTML = state.budget
     .map((item) => {
-      const balance = Number(item.planned) - Number(item.paid);
-      const status = balance <= 0 ? "已结清" : `${item.due} 前付款`;
+      const over = Number(item.paid) + Number(item.balance) > Number(item.planned);
       return `
         <tr>
-          <td>${item.item}</td>
-          <td>${item.category}</td>
+          <td>${text(item.item)}</td>
+          <td>${text(item.category)}</td>
           <td>${money(item.planned)}</td>
           <td>${money(item.paid)}</td>
-          <td>${money(Math.max(balance, 0))}</td>
-          <td><span class="${balance < 0 ? "pill warn" : "pill"}">${status}</span></td>
+          <td>${money(item.balance)}</td>
+          <td><span class="${over ? "pill warn" : "pill"}">${over ? "超预算" : Number(item.balance) ? "待付款" : "已结清"}</span></td>
+          <td class="table-actions">
+            <button class="text-button" type="button" data-budget-pay="${item.id}">记录付款</button>
+            <button class="text-button danger" type="button" data-budget-delete="${item.id}">删除</button>
+          </td>
         </tr>
       `;
     })
     .join("");
 }
 
-function renderVendors() {
-  document.querySelector("#vendorGrid").innerHTML = state.vendors
-    .map(
-      (vendor) => `
-      <article class="vendor-card">
-        <span class="pill">${vendor.type}</span>
-        <strong>${vendor.name}</strong>
-        <p>${vendor.next}</p>
-        <div class="vendor-footer">
-          <span>${vendor.contact}</span>
-          <span>${money(vendor.quote)}</span>
+async function renderVendors() {
+  const library = state.vendors.filter((vendor) => !vendor.selected);
+  const selected = state.vendors.filter((vendor) => vendor.selected);
+  document.querySelector("#vendorLibraryCount").textContent = library.length;
+  document.querySelector("#vendorSelectedCount").textContent = selected.length;
+  document.querySelector("#vendorLibrary").innerHTML = (await Promise.all(library.map(renderVendorCard))).join("") || emptyState("暂无供应商");
+  document.querySelector("#vendorSelected").innerHTML = (await Promise.all(selected.map(renderVendorCard))).join("") || emptyState("暂无最终选择");
+}
+
+async function renderVendorCard(vendor) {
+  const imageUrl = await getVendorImageUrl(vendor.id);
+  return `
+    <article class="vendor-card">
+      <div class="vendor-image">${imageUrl ? `<img src="${imageUrl}" alt="${text(vendor.name)} 案例" />` : `<span>案例图片</span>`}</div>
+      <div class="vendor-body">
+        <div class="vendor-title">
+          <span class="pill">${text(vendor.type)}</span>
+          <strong>${text(vendor.name)}</strong>
         </div>
-      </article>
-    `
-    )
-    .join("");
+        <dl>
+          <div><dt>排期</dt><dd>${text(vendor.schedule)}</dd></div>
+          <div><dt>联系人</dt><dd>${text(vendor.contactName)} · ${text(vendor.phone)}</dd></div>
+          <div><dt>报价</dt><dd>${money(vendor.quote)}</dd></div>
+        </dl>
+        <div class="card-actions">
+          <button class="secondary-button" type="button" data-vendor-select="${vendor.id}">${vendor.selected ? "移出最终" : "最终选择"}</button>
+          <button class="delete-button" type="button" data-vendor-delete="${vendor.id}">删除</button>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function renderGuests() {
@@ -247,11 +307,13 @@ function renderGuests() {
     .map(
       (guest) => `
       <tr>
-        <td>${guest.name}</td>
-        <td>${guest.group}</td>
-        <td><button class="item-action" data-guest-toggle="${guest.id}">${guest.confirmed ? "已确认" : "待确认"}</button></td>
-        <td>${guest.table}</td>
-        <td>${guest.note || "无"}</td>
+        <td>${text(guest.name)}</td>
+        <td>${text(guest.group)}</td>
+        <td>${guest.plusOne ? "是" : "否"}</td>
+        <td>${guest.lodging ? "需要" : "不需要"}</td>
+        <td>${text(guest.note || "无")}</td>
+        <td><button class="text-button danger" type="button" data-guest-delete="${guest.id}">删除</button></td>
+        <td class="attendance-cell"><button class="${guest.confirmed ? "status-button active" : "status-button"}" type="button" data-guest-toggle="${guest.id}">${guest.confirmed ? "已出席" : "待确认"}</button></td>
       </tr>
     `
     )
@@ -263,12 +325,12 @@ function renderTimeline() {
     .map(
       (item) => `
       <article class="timeline-item">
-        <div class="timeline-time">${item.time}</div>
+        <div class="timeline-time">${text(item.time)}</div>
         <div>
-          <strong>${item.title}</strong>
-          <p>${item.check}</p>
+          <strong>${text(item.title)}</strong>
+          <p>${text(item.check)}</p>
         </div>
-        <span class="pill">${item.owner}</span>
+        <span class="pill">${text(item.owner)}</span>
       </article>
     `
     )
@@ -290,18 +352,39 @@ function nextTaskStatus(status) {
   return order[Math.min(order.indexOf(status) + 1, order.length - 1)];
 }
 
+function openModal(id) {
+  const modal = document.querySelector(`#${id}`);
+  const form = modal.querySelector("form");
+  form?.reset();
+  if (typeof modal.showModal === "function") modal.showModal();
+  else modal.setAttribute("open", "");
+}
+
+function closeModal(id) {
+  const modal = document.querySelector(`#${id}`);
+  if (typeof modal.close === "function") modal.close();
+  else modal.removeAttribute("open");
+}
+
 document.querySelector("#navList").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view]");
   if (button) setView(button.dataset.view);
 });
 
-document.body.addEventListener("click", (event) => {
+document.body.addEventListener("click", async (event) => {
+  const opener = event.target.closest("[data-open-modal]");
+  if (opener) openModal(opener.dataset.openModal);
+
+  const closer = event.target.closest("[data-close-modal]");
+  if (closer) closeModal(closer.dataset.closeModal);
+
   const jump = event.target.closest("[data-view-jump]");
   if (jump) setView(jump.dataset.viewJump);
 
   const move = event.target.closest("[data-task-move]");
   if (move) {
     const task = state.tasks.find((item) => item.id === Number(move.dataset.taskMove));
+    if (!task) return;
     task.status = nextTaskStatus(task.status);
     saveState();
     renderAll();
@@ -310,6 +393,7 @@ document.body.addEventListener("click", (event) => {
   const done = event.target.closest("[data-task-done]");
   if (done) {
     const task = state.tasks.find((item) => item.id === Number(done.dataset.taskDone));
+    if (!task) return;
     task.status = "done";
     saveState();
     renderAll();
@@ -318,10 +402,27 @@ document.body.addEventListener("click", (event) => {
   const taskDelete = event.target.closest("[data-task-delete]");
   if (taskDelete) {
     const task = state.tasks.find((item) => item.id === Number(taskDelete.dataset.taskDelete));
-    if (!task) return;
-    const shouldDelete = window.confirm(`确定删除“${task.title}”吗？`);
-    if (!shouldDelete) return;
+    if (!task || !window.confirm(`确定删除“${task.title}”吗？`)) return;
     state.tasks = state.tasks.filter((item) => item.id !== task.id);
+    saveState();
+    renderAll();
+  }
+
+  const vendorSelect = event.target.closest("[data-vendor-select]");
+  if (vendorSelect) {
+    const vendor = state.vendors.find((item) => item.id === Number(vendorSelect.dataset.vendorSelect));
+    if (!vendor) return;
+    vendor.selected = !vendor.selected;
+    saveState();
+    renderAll();
+  }
+
+  const vendorDelete = event.target.closest("[data-vendor-delete]");
+  if (vendorDelete) {
+    const vendor = state.vendors.find((item) => item.id === Number(vendorDelete.dataset.vendorDelete));
+    if (!vendor || !window.confirm(`确定删除“${vendor.name}”吗？`)) return;
+    await deleteVendorImage(vendor.id);
+    state.vendors = state.vendors.filter((item) => item.id !== vendor.id);
     saveState();
     renderAll();
   }
@@ -329,39 +430,53 @@ document.body.addEventListener("click", (event) => {
   const guestToggle = event.target.closest("[data-guest-toggle]");
   if (guestToggle) {
     const guest = state.guests.find((item) => item.id === Number(guestToggle.dataset.guestToggle));
+    if (!guest) return;
     guest.confirmed = !guest.confirmed;
     saveState();
     renderAll();
   }
+
+  const guestDelete = event.target.closest("[data-guest-delete]");
+  if (guestDelete) {
+    const guest = state.guests.find((item) => item.id === Number(guestDelete.dataset.guestDelete));
+    if (!guest || !window.confirm(`确定删除“${guest.name}”吗？`)) return;
+    state.guests = state.guests.filter((item) => item.id !== guest.id);
+    saveState();
+    renderAll();
+  }
+
+  const budgetDelete = event.target.closest("[data-budget-delete]");
+  if (budgetDelete) {
+    const budget = state.budget.find((item) => item.id === Number(budgetDelete.dataset.budgetDelete));
+    if (!budget || !window.confirm(`确定删除“${budget.item}”吗？`)) return;
+    state.budget = state.budget.filter((item) => item.id !== budget.id);
+    saveState();
+    renderAll();
+  }
+
+  const budgetPay = event.target.closest("[data-budget-pay]");
+  if (budgetPay) {
+    const budget = state.budget.find((item) => item.id === Number(budgetPay.dataset.budgetPay));
+    if (!budget) return;
+    const amount = Number(window.prompt("这次付款金额是多少？", "0"));
+    if (!amount || amount < 0) return;
+    budget.paid = Number(budget.paid) + amount;
+    budget.balance = Math.max(Number(budget.balance) - amount, 0);
+    saveState();
+    renderAll();
+  }
+});
+
+document.querySelectorAll(".modal").forEach((modal) => {
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModal(modal.id);
+  });
 });
 
 document.querySelector("#weddingDate").addEventListener("change", (event) => {
   state.weddingDate = event.target.value;
   saveState();
   renderAll();
-});
-
-const taskModal = document.querySelector("#taskModal");
-const taskForm = document.querySelector("#taskForm");
-
-function openTaskModal() {
-  taskForm.reset();
-  if (typeof taskModal.showModal === "function") {
-    taskModal.showModal();
-  } else {
-    taskModal.setAttribute("open", "");
-  }
-}
-
-function closeTaskModal() {
-  taskModal.close();
-}
-
-document.querySelector("#openTaskModal").addEventListener("click", openTaskModal);
-document.querySelector("#closeTaskModal").addEventListener("click", closeTaskModal);
-document.querySelector("#cancelTaskModal").addEventListener("click", closeTaskModal);
-taskModal.addEventListener("click", (event) => {
-  if (event.target === taskModal) closeTaskModal();
 });
 
 document.querySelector("#taskForm").addEventListener("submit", (event) => {
@@ -374,11 +489,55 @@ document.querySelector("#taskForm").addEventListener("submit", (event) => {
     owner: data.owner,
     due: state.weddingDate,
     phase: "新事项",
-    status: "todo",
-    priority: "中"
+    status: "todo"
   });
-  event.currentTarget.reset();
-  closeTaskModal();
+  closeModal("taskModal");
+  saveState();
+  renderAll();
+});
+
+document.querySelector("#vendorForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  const file = form.elements.caseImage.files[0];
+  if (!file) return;
+  if (file.size > MAX_VENDOR_FILE_SIZE) {
+    window.alert("图片文件超过 100MB，请换一个更小的文件。");
+    return;
+  }
+  const id = Date.now();
+  await saveVendorImage(id, file);
+  state.vendors.push({
+    id,
+    name: data.name,
+    type: data.type,
+    schedule: data.schedule,
+    contactName: data.contactName,
+    phone: data.phone,
+    quote: Number(data.quote),
+    selected: false,
+    imageName: file.name
+  });
+  closeModal("vendorModal");
+  saveState();
+  renderAll();
+});
+
+document.querySelector("#guestForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  state.guests.push({
+    id: Date.now(),
+    name: data.name,
+    group: data.group,
+    plusOne: Boolean(data.plusOne),
+    lodging: Boolean(data.lodging),
+    note: data.note,
+    confirmed: false
+  });
+  closeModal("guestModal");
   saveState();
   renderAll();
 });
@@ -389,28 +548,12 @@ document.querySelector("#budgetForm").addEventListener("submit", (event) => {
   state.budget.push({
     id: Date.now(),
     item: data.item,
-    category: "新增",
+    category: data.category,
     planned: Number(data.planned),
     paid: Number(data.paid),
-    due: state.weddingDate
+    balance: Number(data.balance)
   });
-  event.currentTarget.reset();
-  saveState();
-  renderAll();
-});
-
-document.querySelector("#guestForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget));
-  state.guests.push({
-    id: Date.now(),
-    name: data.name,
-    group: data.group,
-    confirmed: false,
-    table: data.table,
-    note: ""
-  });
-  event.currentTarget.reset();
+  closeModal("budgetModal");
   saveState();
   renderAll();
 });
