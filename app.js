@@ -214,24 +214,12 @@ async function ensureProfile(user, name = "") {
 
 async function createWorkspaceForUser(user) {
   const workspaceName = `${profileName(user)}的婚礼计划`;
-  const workspace = {
-    id: crypto.randomUUID(),
-    name: workspaceName,
-    owner_id: user.id,
-    state: structuredClone(initialState)
-  };
-  const { error: workspaceError } = await supabaseClient
-    .from("wedding_workspaces")
-    .insert(workspace);
-  if (workspaceError) throw workspaceError;
-
-  const { error: memberError } = await supabaseClient.from("wedding_memberships").insert({
-    workspace_id: workspace.id,
-    user_id: user.id,
-    role: "owner"
+  const { data: workspace, error } = await supabaseClient.rpc("create_user_workspace", {
+    workspace_name: workspaceName,
+    workspace_state: structuredClone(initialState)
   });
-  if (memberError) throw memberError;
-  return { id: workspace.id, name: workspace.name, state: workspace.state };
+  if (error) throw error;
+  return workspace;
 }
 
 async function loadCurrentWorkspace(user) {

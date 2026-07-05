@@ -96,14 +96,7 @@ using (user_id = auth.uid());
 drop policy if exists "memberships insert owner self" on public.wedding_memberships;
 create policy "memberships insert owner self"
 on public.wedding_memberships for insert
-with check (
-  user_id = auth.uid()
-  and role = 'owner'
-  and exists (
-    select 1 from public.wedding_workspaces w
-    where w.id = workspace_id and w.owner_id = auth.uid()
-  )
-);
+with check (false);
 
 drop policy if exists "memberships insert invited self" on public.wedding_memberships;
 create policy "memberships insert invited self"
@@ -149,3 +142,30 @@ create policy "invitations update invitee"
 on public.wedding_invitations for update
 using (invitee_email = lower(auth.jwt() ->> 'email'))
 with check (invitee_email = lower(auth.jwt() ->> 'email'));
+
+create or replace function public.create_user_workspace(workspace_name text, workspace_state jsonb)
+returns public.wedding_workspaces
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  created_workspace public.wedding_workspaces;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+
+  insert into public.wedding_workspaces (owner_id, name, state)
+  values (auth.uid(), workspace_name, coalesce(workspace_state, '{}'::jsonb))
+  returning * into created_workspace;
+
+  insert into public.wedding_memberships (workspace_id, user_id, role)
+  values (created_workspace.id, auth.uid(), 'owner')
+  on conflict (workspace_id, user_id) do nothing;
+
+  return created_workspace;
+end;
+$$;
+
+grant execute on function public.create_user_workspace(text, jsonb) to authenticated;
