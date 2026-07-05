@@ -31,7 +31,6 @@
             <span class="material-symbols-outlined" aria-hidden="true">image</span>
             上传封面
           </button>
-          <input id="coverImageInput" type="file" accept="image/*" hidden />
         </div>
 
         <div class="sidebar-note">
@@ -318,6 +317,33 @@
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="loginModal">取消</button>
           <button class="primary-button" type="submit">保存并进入</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal wide" id="coverModal" aria-labelledby="coverModalTitle">
+      <form class="modal-card" id="coverForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Cover</p>
+            <h2 id="coverModalTitle">调整封面</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="coverModal" aria-label="关闭">×</button>
+        </div>
+        <label>
+          <span>上传图片</span>
+          <input id="coverImageInput" name="coverImage" type="file" accept="image/*" />
+        </label>
+        <div class="cover-preview" id="coverPreview">
+          <span>选择图片后预览</span>
+        </div>
+        <label>
+          <span>上下位置</span>
+          <input id="coverPositionInput" name="coverPosition" type="range" min="0" max="100" value="50" />
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="coverModal">取消</button>
+          <button class="primary-button" type="submit">保存封面</button>
         </div>
       </form>
     </dialog>

@@ -38,6 +38,7 @@ let state = loadState();
 let currentUser = loadUser();
 let vendorDbPromise;
 let vendorImageUrls = new Map();
+let pendingCover = "";
 
 const views = {
   overview: document.querySelector("#overviewView"),
@@ -73,11 +74,11 @@ function saveState() {
 
 function loadUser() {
   const saved = localStorage.getItem(USER_STORAGE_KEY);
-  if (!saved) return { name: "", avatar: "", cover: "" };
+  if (!saved) return { name: "", avatar: "", cover: "", coverY: 50 };
   try {
-    return { name: "", avatar: "", cover: "", ...JSON.parse(saved) };
+    return { name: "", avatar: "", cover: "", coverY: 50, ...JSON.parse(saved) };
   } catch {
-    return { name: "", avatar: "", cover: "" };
+    return { name: "", avatar: "", cover: "", coverY: 50 };
   }
 }
 
@@ -365,10 +366,21 @@ function renderUser() {
 
   const heroPhoto = document.querySelector("#heroPhoto");
   if (currentUser.cover) {
-    heroPhoto.innerHTML = `<img src="${currentUser.cover}" alt="婚礼封面照片" />`;
+    heroPhoto.innerHTML = `<img src="${currentUser.cover}" alt="婚礼封面照片" style="object-position: center ${Number(currentUser.coverY || 50)}%;" />`;
   } else {
     heroPhoto.innerHTML = "<span>封面照片</span>";
   }
+}
+
+function renderCoverPreview() {
+  const preview = document.querySelector("#coverPreview");
+  const cover = pendingCover || currentUser.cover;
+  const y = Number(document.querySelector("#coverPositionInput").value || currentUser.coverY || 50);
+  if (!cover) {
+    preview.innerHTML = "<span>选择图片后预览</span>";
+    return;
+  }
+  preview.innerHTML = `<img src="${cover}" alt="封面预览" style="object-position: center ${y}%;" />`;
 }
 
 function renderAll() {
@@ -617,7 +629,10 @@ document.querySelector("#loginForm").addEventListener("submit", (event) => {
 });
 
 document.querySelector("#uploadCoverButton").addEventListener("click", () => {
-  document.querySelector("#coverImageInput").click();
+  pendingCover = "";
+  openModal("coverModal");
+  document.querySelector("#coverPositionInput").value = currentUser.coverY || 50;
+  renderCoverPreview();
 });
 
 document.querySelector("#coverImageInput").addEventListener("change", (event) => {
@@ -625,12 +640,26 @@ document.querySelector("#coverImageInput").addEventListener("change", (event) =>
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    currentUser = { ...currentUser, cover: reader.result };
-    saveUser();
-    renderAll();
-    event.target.value = "";
+    pendingCover = reader.result;
+    renderCoverPreview();
   };
   reader.readAsDataURL(file);
+});
+
+document.querySelector("#coverPositionInput").addEventListener("input", renderCoverPreview);
+
+document.querySelector("#coverForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  currentUser = {
+    ...currentUser,
+    cover: pendingCover || currentUser.cover,
+    coverY: Number(document.querySelector("#coverPositionInput").value || 50)
+  };
+  saveUser();
+  closeModal("coverModal");
+  renderAll();
+  event.currentTarget.reset();
+  pendingCover = "";
 });
 
 renderAll();
