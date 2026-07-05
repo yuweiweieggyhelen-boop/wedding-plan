@@ -14,7 +14,6 @@
           <span class="brand-mark" id="accountAvatar">囍</span>
           <div>
             <strong id="accountName">未登录</strong>
-            <span id="accountMeta">点击登录协作账号</span>
           </div>
         </button>
 
@@ -26,6 +25,14 @@
           <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
           <button class="nav-item" data-view="timeline"><span class="material-symbols-outlined" aria-hidden="true">event</span>当天流程</button>
         </nav>
+
+        <div class="sidebar-tools">
+          <button class="secondary-button upload-cover-button" type="button" id="uploadCoverButton">
+            <span class="material-symbols-outlined" aria-hidden="true">image</span>
+            上传封面
+          </button>
+          <input id="coverImageInput" type="file" accept="image/*" hidden />
+        </div>
 
         <div class="sidebar-note">
           <span>下一步重点</span>
@@ -49,8 +56,10 @@
           <div>
             <span id="countdownLabel">距离婚礼还有</span>
             <strong id="daysLeft">-- 天</strong>
-            <p>白底、清晰、可维护。后续你重新上传自己的封面图后，我再把顶部视觉替换成你的图片。</p>
           </div>
+          <figure class="hero-photo" id="heroPhoto">
+            <span>封面照片</span>
+          </figure>
         </section>
 
         <section class="view active" id="overviewView" aria-labelledby="overviewTitle">

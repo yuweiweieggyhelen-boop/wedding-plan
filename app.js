@@ -73,11 +73,11 @@ function saveState() {
 
 function loadUser() {
   const saved = localStorage.getItem(USER_STORAGE_KEY);
-  if (!saved) return { name: "", avatar: "" };
+  if (!saved) return { name: "", avatar: "", cover: "" };
   try {
-    return JSON.parse(saved);
+    return { name: "", avatar: "", cover: "", ...JSON.parse(saved) };
   } catch {
-    return { name: "", avatar: "" };
+    return { name: "", avatar: "", cover: "" };
   }
 }
 
@@ -356,12 +356,18 @@ function renderTimeline() {
 function renderUser() {
   const name = currentUser.name || "未登录";
   document.querySelector("#accountName").textContent = name;
-  document.querySelector("#accountMeta").textContent = currentUser.name ? "协作账号" : "点击登录协作账号";
   const avatar = document.querySelector("#accountAvatar");
   if (currentUser.avatar) {
     avatar.innerHTML = `<img src="${currentUser.avatar}" alt="${text(name)} 的头像" />`;
   } else {
     avatar.textContent = currentUser.name ? currentUser.name.trim().slice(0, 1).toUpperCase() : "囍";
+  }
+
+  const heroPhoto = document.querySelector("#heroPhoto");
+  if (currentUser.cover) {
+    heroPhoto.innerHTML = `<img src="${currentUser.cover}" alt="婚礼封面照片" />`;
+  } else {
+    heroPhoto.innerHTML = "<span>封面照片</span>";
   }
 }
 
@@ -594,7 +600,7 @@ document.querySelector("#loginForm").addEventListener("submit", (event) => {
   const file = form.elements.avatar.files[0];
 
   function persistUser(avatar = currentUser.avatar || "") {
-    currentUser = { name: data.name, avatar };
+    currentUser = { ...currentUser, name: data.name, avatar };
     saveUser();
     closeModal("loginModal");
     renderAll();
@@ -607,6 +613,23 @@ document.querySelector("#loginForm").addEventListener("submit", (event) => {
 
   const reader = new FileReader();
   reader.onload = () => persistUser(reader.result);
+  reader.readAsDataURL(file);
+});
+
+document.querySelector("#uploadCoverButton").addEventListener("click", () => {
+  document.querySelector("#coverImageInput").click();
+});
+
+document.querySelector("#coverImageInput").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentUser = { ...currentUser, cover: reader.result };
+    saveUser();
+    renderAll();
+    event.target.value = "";
+  };
   reader.readAsDataURL(file);
 });
 
