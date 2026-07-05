@@ -23,6 +23,7 @@
           <button class="nav-item" data-view="budget"><span class="material-symbols-outlined" aria-hidden="true">payments</span>预算</button>
           <button class="nav-item" data-view="vendors"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>供应商</button>
           <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
+          <button class="nav-item" data-view="seating"><span class="material-symbols-outlined" aria-hidden="true">table_bar</span>排桌</button>
           <button class="nav-item" data-view="timeline"><span class="material-symbols-outlined" aria-hidden="true">event</span>当天流程</button>
         </nav>
 
@@ -193,6 +194,20 @@
               </thead>
               <tbody id="guestTable"></tbody>
             </table>
+          </div>
+        </section>
+
+        <section class="view" id="seatingView" aria-labelledby="seatingTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="seatingTitle">宾客排桌</h2>
+              <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，+1 宾客按 2 人计算。</p>
+            </div>
+            <button class="primary-button" type="button" id="addTableButton">添加桌子</button>
+          </div>
+          <div class="seating-layout">
+            <section class="seating-stage" id="seatingTables" aria-label="桌位图"></section>
+            <aside class="guest-pool" id="guestPool" aria-label="未安排宾客"></aside>
           </div>
         </section>
 

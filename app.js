@@ -25,6 +25,11 @@ const initialState = {
     { id: 2, name: "王叔叔", group: "男方亲友", plusOne: true, lodging: false, note: "需停车", confirmed: true },
     { id: 3, name: "陈同学", group: "朋友", plusOne: false, lodging: true, note: "等航班", confirmed: false }
   ],
+  seating: {
+    tables: [
+      { id: 1, name: "1桌", guestIds: [] }
+    ]
+  },
   timeline: [
     { time: "07:30", title: "新娘妆造开始", owner: "化妆师", check: "晨袍、首饰、捧花" },
     { time: "10:30", title: "接亲与合影", owner: "伴郎伴娘", check: "红包、堵门道具、摄影到位" },
@@ -46,6 +51,7 @@ const views = {
   budget: document.querySelector("#budgetView"),
   vendors: document.querySelector("#vendorsView"),
   guests: document.querySelector("#guestsView"),
+  seating: document.querySelector("#seatingView"),
   timeline: document.querySelector("#timelineView")
 };
 
@@ -55,17 +61,31 @@ const titles = {
   budget: "预算管理",
   vendors: "供应商管理",
   guests: "宾客管理",
+  seating: "宾客排桌",
   timeline: "婚礼当天流程"
 };
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return structuredClone(initialState);
+  if (!saved) return normalizeState(structuredClone(initialState));
   try {
-    return { ...structuredClone(initialState), ...JSON.parse(saved) };
+    return normalizeState({ ...structuredClone(initialState), ...JSON.parse(saved) });
   } catch {
-    return structuredClone(initialState);
+    return normalizeState(structuredClone(initialState));
   }
+}
+
+function normalizeState(value) {
+  if (!value.seating) value.seating = structuredClone(initialState.seating);
+  if (!Array.isArray(value.seating.tables) || !value.seating.tables.length) {
+    value.seating.tables = structuredClone(initialState.seating.tables);
+  }
+  value.seating.tables.forEach((table, index) => {
+    if (!table.id) table.id = Date.now() + index;
+    if (!table.name) table.name = `${index + 1}桌`;
+    if (!Array.isArray(table.guestIds)) table.guestIds = [];
+  });
+  return value;
 }
 
 function saveState() {
@@ -196,6 +216,18 @@ function renderOverview() {
 
 function guestCount(guest) {
   return guest.plusOne ? 2 : 1;
+}
+
+function guestLabel(guest) {
+  return guest.plusOne ? `${guest.name}2人` : guest.name;
+}
+
+function getGuest(id) {
+  return state.guests.find((guest) => guest.id === Number(id));
+}
+
+function assignedGuestIds() {
+  return new Set(state.seating.tables.flatMap((table) => table.guestIds));
 }
 
 function emptyState(label) {
@@ -349,6 +381,60 @@ function renderGuests() {
     .join("");
 }
 
+function renderSeating() {
+  const assigned = assignedGuestIds();
+  const unassignedGuests = state.guests.filter((guest) => !assigned.has(guest.id));
+  document.querySelector("#seatingTables").innerHTML = state.seating.tables.map(renderTable).join("");
+  document.querySelector("#guestPool").innerHTML = `
+    <div class="panel-heading">
+      <h3>未安排宾客</h3>
+      <span class="count-label">${unassignedGuests.reduce((sum, guest) => sum + guestCount(guest), 0)}人</span>
+    </div>
+    <div class="guest-card-list" data-unassigned-drop="true">
+      ${unassignedGuests.map(renderGuestDragCard).join("") || emptyState("所有宾客都已安排")}
+    </div>
+  `;
+}
+
+function renderTable(table) {
+  const guests = table.guestIds.map(getGuest).filter(Boolean);
+  const used = guests.reduce((sum, guest) => sum + guestCount(guest), 0);
+  const seats = guests.map((guest, index) => renderSeat(guest, index, guests.length)).join("");
+  return `
+    <article class="table-card">
+      <div class="panel-heading">
+        <h3>${text(table.name)}</h3>
+        <span class="${used > 10 ? "pill warn" : "pill"}">${used}/10人</span>
+      </div>
+      <div class="table-drop-zone" data-table-id="${table.id}">
+        <div class="round-table">
+          <strong>${text(table.name)}</strong>
+          <span>${used}/10</span>
+        </div>
+        ${seats}
+      </div>
+    </article>
+  `;
+}
+
+function renderSeat(guest, index, total) {
+  const angle = total <= 1 ? -90 : -90 + (360 / total) * index;
+  return `
+    <button class="seat-chip" type="button" draggable="true" data-drag-guest-id="${guest.id}" data-unseat="${guest.id}" style="--seat-angle: ${angle}deg;">
+      ${text(guestLabel(guest))}
+    </button>
+  `;
+}
+
+function renderGuestDragCard(guest) {
+  return `
+    <article class="guest-drag-card" draggable="true" data-drag-guest-id="${guest.id}">
+      <strong>${text(guest.name)}</strong>
+      <span>${text(guest.group)} · ${guestCount(guest)}人</span>
+    </article>
+  `;
+}
+
 function renderTimeline() {
   document.querySelector("#dayTimeline").innerHTML = state.timeline
     .map(
@@ -403,6 +489,7 @@ function renderAll() {
   renderBudget();
   renderVendors();
   renderGuests();
+  renderSeating();
   renderTimeline();
 }
 
@@ -500,6 +587,16 @@ document.body.addEventListener("click", async (event) => {
     const guest = state.guests.find((item) => item.id === Number(guestDelete.dataset.guestDelete));
     if (!guest || !window.confirm(`确定删除“${guest.name}”吗？`)) return;
     state.guests = state.guests.filter((item) => item.id !== guest.id);
+    state.seating.tables.forEach((table) => {
+      table.guestIds = table.guestIds.filter((id) => id !== guest.id);
+    });
+    saveState();
+    renderAll();
+  }
+
+  const unseat = event.target.closest("[data-unseat]");
+  if (unseat) {
+    removeGuestFromTables(Number(unseat.dataset.unseat));
     saveState();
     renderAll();
   }
@@ -525,6 +622,77 @@ document.body.addEventListener("click", async (event) => {
     renderAll();
   }
 });
+
+document.body.addEventListener("dragstart", (event) => {
+  const card = event.target.closest("[data-drag-guest-id]");
+  if (!card) return;
+  event.dataTransfer.setData("text/plain", card.dataset.dragGuestId);
+  event.dataTransfer.effectAllowed = "move";
+});
+
+document.body.addEventListener("dragover", (event) => {
+  if (event.target.closest("[data-table-id]") || event.target.closest("[data-unassigned-drop]")) {
+    event.preventDefault();
+  }
+});
+
+document.body.addEventListener("drop", (event) => {
+  const guestId = Number(event.dataTransfer.getData("text/plain"));
+  if (!guestId) return;
+
+  const tableDrop = event.target.closest("[data-table-id]");
+  if (tableDrop) {
+    event.preventDefault();
+    assignGuestToTable(guestId, Number(tableDrop.dataset.tableId));
+    return;
+  }
+
+  const unassignedDrop = event.target.closest("[data-unassigned-drop]");
+  if (unassignedDrop) {
+    event.preventDefault();
+    removeGuestFromTables(guestId);
+    saveState();
+    renderAll();
+  }
+});
+
+document.querySelector("#addTableButton").addEventListener("click", () => {
+  const next = state.seating.tables.length + 1;
+  state.seating.tables.push({ id: Date.now(), name: `${next}桌`, guestIds: [] });
+  saveState();
+  renderAll();
+});
+
+function removeGuestFromTables(guestId) {
+  state.seating.tables.forEach((table) => {
+    table.guestIds = table.guestIds.filter((id) => id !== guestId);
+  });
+}
+
+function tableUsedSeats(table) {
+  return table.guestIds.reduce((sum, id) => {
+    const guest = getGuest(id);
+    return sum + (guest ? guestCount(guest) : 0);
+  }, 0);
+}
+
+function assignGuestToTable(guestId, tableId) {
+  const guest = getGuest(guestId);
+  const table = state.seating.tables.find((item) => item.id === tableId);
+  if (!guest || !table) return;
+
+  const alreadyInTable = table.guestIds.includes(guestId);
+  const nextUsed = tableUsedSeats(table) + (alreadyInTable ? 0 : guestCount(guest));
+  if (nextUsed > 10) {
+    window.alert(`${table.name} 最多 10 人，${guestLabel(guest)} 放不下。`);
+    return;
+  }
+
+  removeGuestFromTables(guestId);
+  table.guestIds.push(guestId);
+  saveState();
+  renderAll();
+}
 
 document.querySelectorAll(".modal").forEach((modal) => {
   modal.addEventListener("click", (event) => {
