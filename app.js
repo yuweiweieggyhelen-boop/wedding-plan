@@ -167,7 +167,10 @@ function renderOverview() {
   const progress = state.tasks.length ? Math.round((completed / state.tasks.length) * 100) : 0;
   const planned = state.budget.reduce((sum, item) => sum + Number(item.planned), 0);
   const paid = state.budget.reduce((sum, item) => sum + Number(item.paid), 0);
-  const confirmed = state.guests.filter((guest) => guest.confirmed).length;
+  const confirmed = state.guests
+    .filter((guest) => guest.confirmed)
+    .reduce((sum, guest) => sum + guestCount(guest), 0);
+  const guestTotal = state.guests.reduce((sum, guest) => sum + guestCount(guest), 0);
   const selectedVendors = state.vendors.filter((vendor) => vendor.selected).length;
   const daysLeft = daysBetween(state.weddingDate);
 
@@ -177,7 +180,7 @@ function renderOverview() {
   document.querySelector("#budgetUsed").textContent = money(paid);
   document.querySelector("#budgetTotal").textContent = `总预算 ${money(planned)}`;
   document.querySelector("#guestConfirmed").textContent = `${confirmed} 人`;
-  document.querySelector("#guestTotal").textContent = `宾客总数 ${state.guests.length} 人`;
+  document.querySelector("#guestTotal").textContent = `宾客总数 ${guestTotal} 人`;
   document.querySelector("#selectedVendorCount").textContent = `${selectedVendors} 个`;
 
   const activeTasks = state.tasks
@@ -189,6 +192,10 @@ function renderOverview() {
 
   const payments = state.budget.filter((item) => Number(item.balance) > 0).slice(0, 4);
   document.querySelector("#upcomingPayments").innerHTML = payments.map(renderPayment).join("") || emptyState("暂无待付尾款");
+}
+
+function guestCount(guest) {
+  return guest.plusOne ? 2 : 1;
 }
 
 function emptyState(label) {
@@ -331,6 +338,7 @@ function renderGuests() {
         <td>${text(guest.name)}</td>
         <td>${text(guest.group)}</td>
         <td>${guest.plusOne ? "是" : "否"}</td>
+        <td>${guestCount(guest)} 人</td>
         <td>${guest.lodging ? "需要" : "不需要"}</td>
         <td>${text(guest.note || "无")}</td>
         <td><button class="text-button danger" type="button" data-guest-delete="${guest.id}">删除</button></td>
