@@ -330,9 +330,11 @@
           </div>
           <button class="icon-button" type="button" data-close-modal="coverModal" aria-label="关闭">×</button>
         </div>
-        <label>
-          <span>上传图片</span>
-          <input id="coverImageInput" name="coverImage" type="file" accept="image/*" />
+        <label class="file-drop">
+          <input id="coverImageInput" name="coverImage" type="file" accept="image/*" hidden />
+          <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+          <strong id="coverFileLabel">选择图片</strong>
+          <small>点击上传或更换封面图片</small>
         </label>
         <div class="cover-preview" id="coverPreview">
           <span>选择图片后预览</span>

@@ -99,6 +99,10 @@ function money(value) {
   return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
 }
 
+function coverOffset(value) {
+  return (50 - Number(value || 50)) * 0.7;
+}
+
 function openVendorDb() {
   if (vendorDbPromise) return vendorDbPromise;
   vendorDbPromise = new Promise((resolve, reject) => {
@@ -366,7 +370,7 @@ function renderUser() {
 
   const heroPhoto = document.querySelector("#heroPhoto");
   if (currentUser.cover) {
-    heroPhoto.innerHTML = `<img src="${currentUser.cover}" alt="婚礼封面照片" style="object-position: center ${Number(currentUser.coverY || 50)}%;" />`;
+    heroPhoto.innerHTML = `<img class="cover-shift-image" src="${currentUser.cover}" alt="婚礼封面照片" style="transform: translateY(${coverOffset(currentUser.coverY)}%);" />`;
   } else {
     heroPhoto.innerHTML = "<span>封面照片</span>";
   }
@@ -380,7 +384,7 @@ function renderCoverPreview() {
     preview.innerHTML = "<span>选择图片后预览</span>";
     return;
   }
-  preview.innerHTML = `<img src="${cover}" alt="封面预览" style="object-position: center ${y}%;" />`;
+  preview.innerHTML = `<img class="cover-shift-image" src="${cover}" alt="封面预览" style="transform: translateY(${coverOffset(y)}%);" />`;
 }
 
 function renderAll() {
@@ -632,6 +636,7 @@ document.querySelector("#uploadCoverButton").addEventListener("click", () => {
   pendingCover = "";
   openModal("coverModal");
   document.querySelector("#coverPositionInput").value = currentUser.coverY || 50;
+  document.querySelector("#coverFileLabel").textContent = currentUser.cover ? "更换图片" : "选择图片";
   renderCoverPreview();
 });
 
@@ -641,6 +646,7 @@ document.querySelector("#coverImageInput").addEventListener("change", (event) =>
   const reader = new FileReader();
   reader.onload = () => {
     pendingCover = reader.result;
+    document.querySelector("#coverFileLabel").textContent = file.name;
     renderCoverPreview();
   };
   reader.readAsDataURL(file);
