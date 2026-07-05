@@ -82,11 +82,11 @@ function saveState() {
 
 function loadUser() {
   const saved = localStorage.getItem(USER_STORAGE_KEY);
-  if (!saved) return { name: "", email: "", avatar: "", cover: "", coverY: 50 };
+  if (!saved) return { name: "", email: "", avatar: "", cover: "", coverY: 50, mediaReady: false };
   try {
-    return { name: "", email: "", avatar: "", cover: "", coverY: 50, ...JSON.parse(saved) };
+    return { name: "", email: "", avatar: "", cover: "", coverY: 50, mediaReady: false, ...JSON.parse(saved) };
   } catch {
-    return { name: "", email: "", avatar: "", cover: "", coverY: 50 };
+    return { name: "", email: "", avatar: "", cover: "", coverY: 50, mediaReady: false };
   }
 }
 
@@ -145,6 +145,15 @@ function money(value) {
   return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 function coverOffset(value) {
   return (50 - Number(value || 50)) * 0.7;
 }
@@ -200,7 +209,13 @@ function profileName(user) {
 }
 
 async function ensureProfile(user, name = "") {
-  const displayName = name || profileName(user);
+  const { data: existingProfile } = await supabaseClient
+    .from("profiles")
+    .select("display_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const displayName = name || existingProfile?.display_name || profileName(user);
+  const sameAccount = currentUser.email === user.email && currentUser.mediaReady;
   const { error } = await supabaseClient.from("profiles").upsert({
     id: user.id,
     email: user.email,
@@ -208,7 +223,15 @@ async function ensureProfile(user, name = "") {
     updated_at: new Date().toISOString()
   });
   if (error) throw error;
-  currentUser = { ...currentUser, name: displayName, email: user.email };
+  currentUser = {
+    ...currentUser,
+    name: displayName,
+    email: user.email,
+    avatar: sameAccount ? currentUser.avatar : "",
+    cover: sameAccount ? currentUser.cover : "",
+    coverY: sameAccount ? currentUser.coverY : 50,
+    mediaReady: true
+  };
   saveUser();
 }
 
@@ -608,6 +631,7 @@ function renderUser() {
   document.querySelector("#accountEmail").textContent = currentUser.email || "--";
   document.querySelector("#accountWorkspace").textContent = currentWorkspace?.name || "--";
   document.querySelector("#profileNameInput").value = currentUser.name || "";
+  document.querySelector("#workspaceNameInput").value = currentWorkspace?.name || "";
   const avatar = document.querySelector("#accountAvatar");
   if (currentUser.avatar) {
     avatar.innerHTML = `<img src="${currentUser.avatar}" alt="${text(name)} 的头像" />`;
@@ -962,18 +986,41 @@ document.querySelector("#budgetForm").addEventListener("submit", (event) => {
 document.querySelector("#accountForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!currentSession?.user) return;
+  const form = event.currentTarget;
   const name = document.querySelector("#profileNameInput").value.trim() || profileName(currentSession.user);
-  const { error } = await supabaseClient
+  const workspaceName = document.querySelector("#workspaceNameInput").value.trim() || currentWorkspace?.name || `${name}的婚礼计划`;
+  const avatarFile = form.elements.avatar.files[0];
+  let avatar = currentUser.avatar;
+
+  if (avatarFile) {
+    avatar = await readFileAsDataUrl(avatarFile);
+  }
+
+  const { error: profileError } = await supabaseClient
     .from("profiles")
     .update({ display_name: name, updated_at: new Date().toISOString() })
     .eq("id", currentSession.user.id);
-  if (error) {
-    window.alert(`保存失败：${error.message}`);
+  if (profileError) {
+    window.alert(`保存失败：${profileError.message}`);
     return;
   }
-  currentUser = { ...currentUser, name };
+
+  if (currentWorkspace?.id && workspaceName !== currentWorkspace.name) {
+    const { error: workspaceError } = await supabaseClient
+      .from("wedding_workspaces")
+      .update({ name: workspaceName, updated_at: new Date().toISOString() })
+      .eq("id", currentWorkspace.id);
+    if (workspaceError) {
+      window.alert(`项目名称保存失败：${workspaceError.message}`);
+      return;
+    }
+    currentWorkspace = { ...currentWorkspace, name: workspaceName };
+  }
+
+  currentUser = { ...currentUser, name, avatar, mediaReady: true };
   saveUser();
   closeModal("accountModal");
+  form.reset();
   renderAll();
 });
 
@@ -1033,7 +1080,7 @@ document.querySelector("#signOutButton").addEventListener("click", async () => {
   currentSession = null;
   currentWorkspace = null;
   pendingInvites = [];
-  currentUser = { name: "", email: "", avatar: "", cover: "", coverY: 50 };
+  currentUser = { name: "", email: "", avatar: "", cover: "", coverY: 50, mediaReady: false };
   saveUser();
   closeModal("accountModal");
   showAuthGate();
@@ -1066,7 +1113,8 @@ document.querySelector("#coverForm").addEventListener("submit", (event) => {
   currentUser = {
     ...currentUser,
     cover: pendingCover || currentUser.cover,
-    coverY: Number(document.querySelector("#coverPositionInput").value || 50)
+    coverY: Number(document.querySelector("#coverPositionInput").value || 50),
+    mediaReady: true
   };
   saveUser();
   closeModal("coverModal");
