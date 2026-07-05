@@ -8,12 +8,37 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section class="auth-gate" id="authGate">
+      <div class="auth-card">
+        <p class="eyebrow">Wedding Workspace</p>
+        <h1>登录喜事计划局</h1>
+        <p>注册后会创建一套空白备婚资料；邀请协作账号后，大家共享同一个婚礼项目。</p>
+        <div class="auth-tabs" role="tablist" aria-label="登录或注册">
+          <button class="active" type="button" data-auth-tab="login">登录</button>
+          <button type="button" data-auth-tab="register">申请注册</button>
+        </div>
+        <form class="auth-form active" id="authLoginForm">
+          <label><span>账号邮箱</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label><span>密码</span><input name="password" type="password" autocomplete="current-password" required /></label>
+          <button class="primary-button" type="submit">登录</button>
+        </form>
+        <form class="auth-form" id="authRegisterForm">
+          <label><span>你的名字</span><input name="name" autocomplete="name" required /></label>
+          <label><span>账号邮箱</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label><span>密码</span><input name="password" type="password" autocomplete="new-password" minlength="6" required /></label>
+          <button class="primary-button" type="submit">注册并进入</button>
+        </form>
+        <p class="auth-message" id="authMessage"></p>
+      </div>
+    </section>
+
+    <div class="app-shell is-locked" id="appShell">
       <aside class="sidebar" aria-label="主导航">
-        <button class="brand account-button" type="button" data-open-modal="loginModal" aria-label="账号设置">
+        <button class="brand account-button" type="button" data-open-modal="accountModal" aria-label="账号与协作">
           <span class="brand-mark" id="accountAvatar">囍</span>
           <div>
             <strong id="accountName">未登录</strong>
+            <small id="workspaceName">未进入项目</small>
           </div>
         </button>
 
@@ -315,24 +340,47 @@
       </form>
     </dialog>
 
-    <dialog class="modal" id="loginModal" aria-labelledby="loginModalTitle">
-      <form class="modal-card" id="loginForm">
+    <dialog class="modal wide" id="accountModal" aria-labelledby="accountModalTitle">
+      <form class="modal-card" id="accountForm">
         <div class="modal-heading">
           <div>
             <p class="eyebrow">Account</p>
-            <h2 id="loginModalTitle">登录协作账号</h2>
+            <h2 id="accountModalTitle">账号与协作</h2>
           </div>
-          <button class="icon-button" type="button" data-close-modal="loginModal" aria-label="关闭">×</button>
+          <button class="icon-button" type="button" data-close-modal="accountModal" aria-label="关闭">×</button>
         </div>
-        <label><span>账号名称</span><input name="name" placeholder="例如：Helen" required /></label>
-        <label>
-          <span>头像</span>
-          <input name="avatar" type="file" accept="image/*" />
-          <small>可选。头像会保存在当前浏览器本地。</small>
-        </label>
+        <div class="account-summary">
+          <div>
+            <span>当前账号</span>
+            <strong id="accountEmail">--</strong>
+          </div>
+          <div>
+            <span>当前项目</span>
+            <strong id="accountWorkspace">--</strong>
+          </div>
+        </div>
+        <label><span>显示名称</span><input name="name" id="profileNameInput" placeholder="例如：Helen" /></label>
+        <section class="collab-panel">
+          <div>
+            <h3>邀请协作账号</h3>
+            <p>输入对方注册用的邮箱。对方登录后会看到邀请，同意后共享这套备婚信息。</p>
+          </div>
+          <div class="invite-row">
+            <input id="inviteEmailInput" type="email" placeholder="对方账号邮箱" />
+            <button class="secondary-button" type="button" id="sendInviteButton">发送邀请</button>
+          </div>
+        </section>
+        <section class="collab-panel">
+          <div class="panel-heading">
+            <h3>收到的协作邀请</h3>
+            <span class="count-label" id="inviteCount">0</span>
+          </div>
+          <div class="stack-list" id="inviteList"></div>
+        </section>
         <div class="modal-actions">
-          <button class="secondary-button" type="button" data-close-modal="loginModal">取消</button>
-          <button class="primary-button" type="submit">保存并进入</button>
+          <button class="secondary-button" type="button" id="signOutButton">退出登录</button>
+          <button class="secondary-button" type="button" data-close-modal="accountModal">取消</button>
+          <button class="primary-button" type="submit">保存设置</button>
         </div>
       </form>
     </dialog>
@@ -366,6 +414,7 @@
       </form>
     </dialog>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>

@@ -24,6 +24,103 @@ body {
   font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.auth-gate.hidden {
+  display: none;
+}
+
+.auth-card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  font-size: 30px;
+}
+
+.auth-card p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.auth-tabs button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.auth-tabs button.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow);
+}
+
+.auth-form {
+  display: none;
+  gap: 14px;
+}
+
+.auth-form.active {
+  display: grid;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.auth-form label span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.auth-message {
+  min-height: 22px;
+  font-size: 14px;
+}
+
+.auth-message[data-type="error"] {
+  color: var(--danger);
+}
+
+.auth-message[data-type="success"] {
+  color: var(--success);
+}
+
+.app-shell.is-locked {
+  visibility: hidden;
+}
+
 button,
 input,
 textarea {
@@ -95,6 +192,12 @@ button {
 .brand strong,
 .brand span {
   display: block;
+}
+
+.brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
 }
 
 .nav-list {
@@ -987,6 +1090,52 @@ dd {
   margin-top: 4px;
 }
 
+.account-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.account-summary > div,
+.collab-panel {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.account-summary span,
+.collab-panel p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.account-summary strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.collab-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.collab-panel h3 {
+  margin-bottom: 6px;
+}
+
+.collab-panel p {
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+.invite-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1051,6 +1200,8 @@ dd {
   .topbar,
   .section-heading,
   .panel-heading,
+  .account-summary,
+  .invite-row,
   .two-column,
   .hero-panel,
   .metric-grid,

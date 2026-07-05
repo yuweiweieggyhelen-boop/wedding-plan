@@ -3,44 +3,31 @@ const USER_STORAGE_KEY = "wedding-pm-user-v1";
 const VENDOR_DB_NAME = "wedding-pm-vendor-files";
 const VENDOR_STORE = "caseImages";
 const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
+const SUPABASE_URL = "https://pcxxtgewmverwqmrijlo.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JIW4FwbiDd1OwUh0ZoAYGQ_2v_-Wjq6";
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const initialState = {
   weddingDate: "2026-10-18",
-  tasks: [
-    { id: 1, title: "确认婚宴酒店合同与尾款节点", details: "核对合同金额、菜单、场地使用时间和尾款支付日期。", owner: "Helen", due: "2026-07-12", phase: "场地", status: "doing" },
-    { id: 2, title: "筛选摄影摄像作品集并约档期", details: "对比样片风格、交付内容、双机位价格和婚礼当天档期。", owner: "两人", due: "2026-07-18", phase: "供应商", status: "todo" },
-    { id: 3, title: "整理第一版宾客名单", details: "先列出双方亲友、朋友和同事，后续再确认是否出席。", owner: "双方父母", due: "2026-07-21", phase: "宾客", status: "doing" }
-  ],
-  budget: [
-    { id: 1, item: "婚宴酒店", category: "场地", planned: 88000, paid: 30000, balance: 58000 },
-    { id: 2, item: "婚庆策划", category: "策划", planned: 36000, paid: 12000, balance: 24000 },
-    { id: 3, item: "摄影摄像", category: "影像", planned: 22000, paid: 6000, balance: 16000 }
-  ],
-  vendors: [
-    { id: 1, name: "湖畔宴会厅", type: "婚宴酒店", schedule: "婚礼日全天可用", contactName: "周经理", phone: "138-0000-0001", quote: 88000, selected: true, imageName: "" },
-    { id: 2, name: "白昼婚礼策划", type: "婚庆策划", schedule: "待确认现场勘测", contactName: "Mia", phone: "138-0000-0002", quote: 36000, selected: false, imageName: "" }
-  ],
-  guests: [
-    { id: 1, name: "李阿姨", group: "女方亲友", plusOne: false, lodging: false, note: "素食", confirmed: true },
-    { id: 2, name: "王叔叔", group: "男方亲友", plusOne: true, lodging: false, note: "需停车", confirmed: true },
-    { id: 3, name: "陈同学", group: "朋友", plusOne: false, lodging: true, note: "等航班", confirmed: false }
-  ],
+  tasks: [],
+  budget: [],
+  vendors: [],
+  guests: [],
   seating: {
     tables: [
       { id: 1, name: "1桌", guestIds: [] }
     ]
   },
-  timeline: [
-    { time: "07:30", title: "新娘妆造开始", owner: "化妆师", check: "晨袍、首饰、捧花" },
-    { time: "10:30", title: "接亲与合影", owner: "伴郎伴娘", check: "红包、堵门道具、摄影到位" },
-    { time: "14:00", title: "场地彩排", owner: "婚庆统筹", check: "音响、灯光、走位" },
-    { time: "17:30", title: "迎宾签到", owner: "签到负责人", check: "签到本、座位表、伴手礼" },
-    { time: "18:18", title: "仪式开始", owner: "主持人", check: "戒指、誓词卡、音乐" }
-  ]
+  timeline: []
 };
 
 let state = loadState();
 let currentUser = loadUser();
+let currentSession = null;
+let currentWorkspace = null;
+let pendingInvites = [];
+let appReady = false;
+let remoteSaveTimer = 0;
 let vendorDbPromise;
 let vendorImageUrls = new Map();
 let pendingCover = "";
@@ -90,15 +77,16 @@ function normalizeState(value) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueRemoteSave();
 }
 
 function loadUser() {
   const saved = localStorage.getItem(USER_STORAGE_KEY);
-  if (!saved) return { name: "", avatar: "", cover: "", coverY: 50 };
+  if (!saved) return { name: "", email: "", avatar: "", cover: "", coverY: 50 };
   try {
-    return { name: "", avatar: "", cover: "", coverY: 50, ...JSON.parse(saved) };
+    return { name: "", email: "", avatar: "", cover: "", coverY: 50, ...JSON.parse(saved) };
   } catch {
-    return { name: "", avatar: "", cover: "", coverY: 50 };
+    return { name: "", email: "", avatar: "", cover: "", coverY: 50 };
   }
 }
 
@@ -113,6 +101,44 @@ function text(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function setAuthMessage(message, type = "info") {
+  const element = document.querySelector("#authMessage");
+  element.textContent = message || "";
+  element.dataset.type = type;
+}
+
+function showAuthGate(message = "") {
+  document.querySelector("#authGate").classList.remove("hidden");
+  document.querySelector("#appShell").classList.add("is-locked");
+  setAuthMessage(message);
+}
+
+function hideAuthGate() {
+  document.querySelector("#authGate").classList.add("hidden");
+  document.querySelector("#appShell").classList.remove("is-locked");
+}
+
+function requireSupabase() {
+  if (supabaseClient) return true;
+  showAuthGate("没有加载到登录服务，请刷新页面再试。", "error");
+  return false;
+}
+
+function queueRemoteSave() {
+  if (!appReady || !supabaseClient || !currentWorkspace?.id) return;
+  window.clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = window.setTimeout(saveWorkspaceState, 450);
+}
+
+async function saveWorkspaceState() {
+  if (!currentWorkspace?.id) return;
+  const { error } = await supabaseClient
+    .from("wedding_workspaces")
+    .update({ state, updated_at: new Date().toISOString() })
+    .eq("id", currentWorkspace.id);
+  if (error) console.warn("保存协作数据失败", error.message);
 }
 
 function money(value) {
@@ -167,6 +193,141 @@ async function getVendorImageUrl(id) {
   const url = URL.createObjectURL(blob);
   vendorImageUrls.set(id, url);
   return url;
+}
+
+function profileName(user) {
+  return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "协作账号";
+}
+
+async function ensureProfile(user, name = "") {
+  const displayName = name || profileName(user);
+  const { error } = await supabaseClient.from("profiles").upsert({
+    id: user.id,
+    email: user.email,
+    display_name: displayName,
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  currentUser = { ...currentUser, name: displayName, email: user.email };
+  saveUser();
+}
+
+async function createWorkspaceForUser(user) {
+  const workspaceName = `${profileName(user)}的婚礼计划`;
+  const workspace = {
+    id: crypto.randomUUID(),
+    name: workspaceName,
+    owner_id: user.id,
+    state: structuredClone(initialState)
+  };
+  const { error: workspaceError } = await supabaseClient
+    .from("wedding_workspaces")
+    .insert(workspace);
+  if (workspaceError) throw workspaceError;
+
+  const { error: memberError } = await supabaseClient.from("wedding_memberships").insert({
+    workspace_id: workspace.id,
+    user_id: user.id,
+    role: "owner"
+  });
+  if (memberError) throw memberError;
+  return { id: workspace.id, name: workspace.name, state: workspace.state };
+}
+
+async function loadCurrentWorkspace(user) {
+  const { data: memberships, error } = await supabaseClient
+    .from("wedding_memberships")
+    .select("role, workspace:wedding_workspaces(id, name, state, updated_at)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const workspace = memberships?.[0]?.workspace || (await createWorkspaceForUser(user));
+  currentWorkspace = workspace;
+  state = normalizeState({ ...structuredClone(initialState), ...(workspace.state || {}) });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+async function loadInvitations() {
+  if (!currentSession?.user?.email) return;
+  const { data, error } = await supabaseClient
+    .from("wedding_invitations")
+    .select("id, status, created_at, workspace:wedding_workspaces(id, name)")
+    .eq("invitee_email", currentSession.user.email.toLowerCase())
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) {
+    pendingInvites = [];
+    console.warn("读取协作邀请失败", error.message);
+    return;
+  }
+  pendingInvites = data || [];
+}
+
+async function enterApplication(session) {
+  if (!session?.user) {
+    appReady = false;
+    showAuthGate();
+    return;
+  }
+  currentSession = session;
+  appReady = false;
+  try {
+    await ensureProfile(session.user);
+    await loadCurrentWorkspace(session.user);
+    await loadInvitations();
+    appReady = true;
+    hideAuthGate();
+    renderAll();
+  } catch (error) {
+    showAuthGate(`数据库还没准备好：${error.message}。请先运行 supabase-schema.sql。`, "error");
+  }
+}
+
+async function sendInvite(email) {
+  const inviteeEmail = email.trim().toLowerCase();
+  if (!inviteeEmail || !currentWorkspace?.id || !currentSession?.user) return;
+  const { error } = await supabaseClient.from("wedding_invitations").insert({
+    workspace_id: currentWorkspace.id,
+    inviter_id: currentSession.user.id,
+    invitee_email: inviteeEmail,
+    status: "pending"
+  });
+  if (error) {
+    window.alert(`邀请发送失败：${error.message}`);
+    return;
+  }
+  document.querySelector("#inviteEmailInput").value = "";
+  window.alert("邀请已发送。对方注册/登录后会在账号窗口看到邀请。");
+}
+
+async function acceptInvite(invitationId) {
+  const invitation = pendingInvites.find((item) => item.id === invitationId);
+  if (!invitation || !currentSession?.user) return;
+
+  const { error: memberError } = await supabaseClient.from("wedding_memberships").insert({
+    workspace_id: invitation.workspace.id,
+    user_id: currentSession.user.id,
+    role: "member"
+  });
+  if (memberError && memberError.code !== "23505") {
+    window.alert(`加入协作失败：${memberError.message}`);
+    return;
+  }
+
+  const { error: inviteError } = await supabaseClient
+    .from("wedding_invitations")
+    .update({ status: "accepted", responded_at: new Date().toISOString() })
+    .eq("id", invitationId);
+  if (inviteError) {
+    window.alert(`更新邀请失败：${inviteError.message}`);
+    return;
+  }
+
+  await loadCurrentWorkspace(currentSession.user);
+  await loadInvitations();
+  renderAll();
+  closeModal("accountModal");
 }
 
 function daysBetween(dateString) {
@@ -455,6 +616,10 @@ function renderTimeline() {
 function renderUser() {
   const name = currentUser.name || "未登录";
   document.querySelector("#accountName").textContent = name;
+  document.querySelector("#workspaceName").textContent = currentWorkspace?.name || "未进入项目";
+  document.querySelector("#accountEmail").textContent = currentUser.email || "--";
+  document.querySelector("#accountWorkspace").textContent = currentWorkspace?.name || "--";
+  document.querySelector("#profileNameInput").value = currentUser.name || "";
   const avatar = document.querySelector("#accountAvatar");
   if (currentUser.avatar) {
     avatar.innerHTML = `<img src="${currentUser.avatar}" alt="${text(name)} 的头像" />`;
@@ -468,6 +633,21 @@ function renderUser() {
   } else {
     heroPhoto.innerHTML = "<span>封面照片</span>";
   }
+
+  document.querySelector("#inviteCount").textContent = pendingInvites.length;
+  document.querySelector("#inviteList").innerHTML = pendingInvites
+    .map(
+      (invite) => `
+        <article class="list-item">
+          <div>
+            <strong>${text(invite.workspace?.name || "婚礼项目")}</strong>
+            <span>邀请你加入协作</span>
+          </div>
+          <button class="secondary-button" type="button" data-accept-invite="${invite.id}">同意</button>
+        </article>
+      `
+    )
+    .join("") || emptyState("暂无新的协作邀请");
 }
 
 function renderCoverPreview() {
@@ -502,6 +682,7 @@ function openModal(id) {
   const modal = document.querySelector(`#${id}`);
   const form = modal.querySelector("form");
   form?.reset();
+  if (id === "accountModal") renderUser();
   if (typeof modal.showModal === "function") modal.showModal();
   else modal.setAttribute("open", "");
 }
@@ -620,6 +801,11 @@ document.body.addEventListener("click", async (event) => {
     budget.balance = Math.max(Number(budget.balance) - amount, 0);
     saveState();
     renderAll();
+  }
+
+  const acceptButton = event.target.closest("[data-accept-invite]");
+  if (acceptButton) {
+    await acceptInvite(acceptButton.dataset.acceptInvite);
   }
 });
 
@@ -785,27 +971,84 @@ document.querySelector("#budgetForm").addEventListener("submit", (event) => {
   renderAll();
 });
 
-document.querySelector("#loginForm").addEventListener("submit", (event) => {
+document.querySelector("#accountForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = event.currentTarget;
-  const data = Object.fromEntries(new FormData(form));
-  const file = form.elements.avatar.files[0];
-
-  function persistUser(avatar = currentUser.avatar || "") {
-    currentUser = { ...currentUser, name: data.name, avatar };
-    saveUser();
-    closeModal("loginModal");
-    renderAll();
-  }
-
-  if (!file) {
-    persistUser();
+  if (!currentSession?.user) return;
+  const name = document.querySelector("#profileNameInput").value.trim() || profileName(currentSession.user);
+  const { error } = await supabaseClient
+    .from("profiles")
+    .update({ display_name: name, updated_at: new Date().toISOString() })
+    .eq("id", currentSession.user.id);
+  if (error) {
+    window.alert(`保存失败：${error.message}`);
     return;
   }
+  currentUser = { ...currentUser, name };
+  saveUser();
+  closeModal("accountModal");
+  renderAll();
+});
 
-  const reader = new FileReader();
-  reader.onload = () => persistUser(reader.result);
-  reader.readAsDataURL(file);
+document.querySelectorAll("[data-auth-tab]").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("[data-auth-tab]").forEach((item) => item.classList.toggle("active", item === button));
+    document.querySelector("#authLoginForm").classList.toggle("active", button.dataset.authTab === "login");
+    document.querySelector("#authRegisterForm").classList.toggle("active", button.dataset.authTab === "register");
+    setAuthMessage("");
+  });
+});
+
+document.querySelector("#authLoginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!requireSupabase()) return;
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  setAuthMessage("正在登录...");
+  const { data: result, error } = await supabaseClient.auth.signInWithPassword({
+    email: data.email.trim().toLowerCase(),
+    password: data.password
+  });
+  if (error) {
+    setAuthMessage(`登录失败：${error.message}`, "error");
+    return;
+  }
+  await enterApplication(result.session);
+});
+
+document.querySelector("#authRegisterForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!requireSupabase()) return;
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  setAuthMessage("正在注册...");
+  const { data: result, error } = await supabaseClient.auth.signUp({
+    email: data.email.trim().toLowerCase(),
+    password: data.password,
+    options: { data: { display_name: data.name.trim() } }
+  });
+  if (error) {
+    setAuthMessage(`注册失败：${error.message}`, "error");
+    return;
+  }
+  if (!result.session) {
+    setAuthMessage("注册成功，请先去邮箱确认账号，然后回来登录。", "success");
+    return;
+  }
+  await ensureProfile(result.session.user, data.name.trim());
+  await enterApplication(result.session);
+});
+
+document.querySelector("#sendInviteButton").addEventListener("click", () => {
+  sendInvite(document.querySelector("#inviteEmailInput").value);
+});
+
+document.querySelector("#signOutButton").addEventListener("click", async () => {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  currentSession = null;
+  currentWorkspace = null;
+  pendingInvites = [];
+  currentUser = { name: "", email: "", avatar: "", cover: "", coverY: 50 };
+  saveUser();
+  closeModal("accountModal");
+  showAuthGate();
 });
 
 document.querySelector("#uploadCoverButton").addEventListener("click", () => {
@@ -844,8 +1087,15 @@ document.querySelector("#coverForm").addEventListener("submit", (event) => {
   pendingCover = "";
 });
 
-renderAll();
-
-if (!currentUser.name) {
-  openModal("loginModal");
+async function initApp() {
+  if (!requireSupabase()) return;
+  showAuthGate("正在检查登录状态...");
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error || !data.session) {
+    showAuthGate();
+    return;
+  }
+  await enterApplication(data.session);
 }
+
+initApp();
