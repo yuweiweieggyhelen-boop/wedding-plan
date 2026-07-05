@@ -1087,9 +1087,37 @@ document.querySelector("#coverForm").addEventListener("submit", (event) => {
   pendingCover = "";
 });
 
+async function consumeAuthCallback() {
+  const url = new URL(window.location.href);
+  const errorDescription = url.searchParams.get("error_description") || new URLSearchParams(url.hash.slice(1)).get("error_description");
+  if (errorDescription) {
+    showAuthGate(`邮箱验证失败：${errorDescription.replaceAll("+", " ")}`, "error");
+    return null;
+  }
+
+  const code = url.searchParams.get("code");
+  if (!code) return null;
+
+  const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
+  url.searchParams.delete("code");
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+
+  if (error) {
+    showAuthGate(`邮箱验证失败：${error.message}`, "error");
+    return null;
+  }
+  return data.session;
+}
+
 async function initApp() {
   if (!requireSupabase()) return;
   showAuthGate("正在检查登录状态...");
+  const callbackSession = await consumeAuthCallback();
+  if (callbackSession) {
+    await enterApplication(callbackSession);
+    return;
+  }
+
   const { data, error } = await supabaseClient.auth.getSession();
   if (error || !data.session) {
     showAuthGate();
