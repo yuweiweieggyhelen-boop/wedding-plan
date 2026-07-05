@@ -151,7 +151,7 @@ button {
 
 .brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 8px;
 }
@@ -189,29 +189,42 @@ button {
   object-fit: cover;
 }
 
-.brand strong,
-.brand span {
+.brand strong {
   display: block;
+}
+
+.brand > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding-top: 1px;
+}
+
+.brand strong,
+.brand small {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand small {
   display: block;
-  margin-top: 4px;
   color: var(--muted);
+  line-height: 1.35;
 }
 
 .member-stack {
   display: flex;
   align-items: center;
   gap: 0;
-  margin-top: 8px;
+  margin-top: 2px;
   min-height: 24px;
 }
 
 .member-avatar {
   width: 24px;
   height: 24px;
-  display: grid;
+  flex: 0 0 24px;
+  display: inline-grid;
   place-items: center;
   margin-left: -6px;
   border: 2px solid var(--surface);
@@ -220,6 +233,8 @@ button {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .member-avatar:first-child {
@@ -236,6 +251,7 @@ button {
 .member-more {
   width: auto;
   min-width: 24px;
+  flex-basis: auto;
   padding: 0 7px;
   border-radius: 999px;
 }
