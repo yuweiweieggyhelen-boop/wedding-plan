@@ -10,13 +10,13 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="主导航">
-        <div class="brand">
-          <span class="brand-mark">囍</span>
+        <button class="brand account-button" type="button" data-open-modal="loginModal" aria-label="账号设置">
+          <span class="brand-mark" id="accountAvatar">囍</span>
           <div>
-            <strong>喜事计划局</strong>
-            <span>Wedding PM</span>
+            <strong id="accountName">未登录</strong>
+            <span id="accountMeta">点击登录协作账号</span>
           </div>
-        </div>
+        </button>
 
         <nav class="nav-list" id="navList">
           <button class="nav-item active" data-view="overview"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>总览</button>
@@ -287,6 +287,28 @@
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="budgetModal">取消</button>
           <button class="primary-button" type="submit">保存预算</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="loginModal" aria-labelledby="loginModalTitle">
+      <form class="modal-card" id="loginForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Account</p>
+            <h2 id="loginModalTitle">登录协作账号</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="loginModal" aria-label="关闭">×</button>
+        </div>
+        <label><span>账号名称</span><input name="name" placeholder="例如：Helen" required /></label>
+        <label>
+          <span>头像</span>
+          <input name="avatar" type="file" accept="image/*" />
+          <small>可选。头像会保存在当前浏览器本地。</small>
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="loginModal">取消</button>
+          <button class="primary-button" type="submit">保存并进入</button>
         </div>
       </form>
     </dialog>

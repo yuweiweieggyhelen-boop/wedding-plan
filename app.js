@@ -1,4 +1,5 @@
 const STORAGE_KEY = "wedding-pm-state-v2";
+const USER_STORAGE_KEY = "wedding-pm-user-v1";
 const VENDOR_DB_NAME = "wedding-pm-vendor-files";
 const VENDOR_STORE = "caseImages";
 const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
@@ -34,6 +35,7 @@ const initialState = {
 };
 
 let state = loadState();
+let currentUser = loadUser();
 let vendorDbPromise;
 let vendorImageUrls = new Map();
 
@@ -67,6 +69,20 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadUser() {
+  const saved = localStorage.getItem(USER_STORAGE_KEY);
+  if (!saved) return { name: "", avatar: "" };
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return { name: "", avatar: "" };
+  }
+}
+
+function saveUser() {
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser));
 }
 
 function text(value) {
@@ -195,7 +211,7 @@ function renderPayment(item) {
         <strong>${text(item.item)}</strong>
         <span>${text(item.category)}</span>
       </div>
-      <span class="pill">${money(item.balance)}</span>
+      <span class="amount-pill">${money(item.balance)}</span>
     </article>
   `;
 }
@@ -255,9 +271,9 @@ function renderBudget() {
         <tr>
           <td>${text(item.item)}</td>
           <td>${text(item.category)}</td>
-          <td>${money(item.planned)}</td>
-          <td>${money(item.paid)}</td>
-          <td>${money(item.balance)}</td>
+          <td class="money-cell">${money(item.planned)}</td>
+          <td class="money-cell">${money(item.paid)}</td>
+          <td class="money-cell">${money(item.balance)}</td>
           <td><span class="${over ? "pill warn" : "pill"}">${over ? "超预算" : Number(item.balance) ? "待付款" : "已结清"}</span></td>
           <td class="table-actions">
             <button class="text-button" type="button" data-budget-pay="${item.id}">记录付款</button>
@@ -337,7 +353,20 @@ function renderTimeline() {
     .join("");
 }
 
+function renderUser() {
+  const name = currentUser.name || "未登录";
+  document.querySelector("#accountName").textContent = name;
+  document.querySelector("#accountMeta").textContent = currentUser.name ? "协作账号" : "点击登录协作账号";
+  const avatar = document.querySelector("#accountAvatar");
+  if (currentUser.avatar) {
+    avatar.innerHTML = `<img src="${currentUser.avatar}" alt="${text(name)} 的头像" />`;
+  } else {
+    avatar.textContent = currentUser.name ? currentUser.name.trim().slice(0, 1).toUpperCase() : "囍";
+  }
+}
+
 function renderAll() {
+  renderUser();
   document.querySelector("#weddingDate").value = state.weddingDate;
   renderOverview();
   renderTasks();
@@ -558,4 +587,31 @@ document.querySelector("#budgetForm").addEventListener("submit", (event) => {
   renderAll();
 });
 
+document.querySelector("#loginForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  const file = form.elements.avatar.files[0];
+
+  function persistUser(avatar = currentUser.avatar || "") {
+    currentUser = { name: data.name, avatar };
+    saveUser();
+    closeModal("loginModal");
+    renderAll();
+  }
+
+  if (!file) {
+    persistUser();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => persistUser(reader.result);
+  reader.readAsDataURL(file);
+});
+
 renderAll();
+
+if (!currentUser.name) {
+  openModal("loginModal");
+}
