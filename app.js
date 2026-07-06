@@ -443,22 +443,32 @@ function relatedGuest(guest) {
 function lodgingStats() {
   const lodgingGuests = state.guests.filter((guest) => guest.lodging);
   const people = lodgingGuests.reduce((sum, guest) => sum + guestCount(guest), 0);
-  const grouped = new Set();
-  let rooms = 0;
+  const lodgingIds = new Set(lodgingGuests.map((guest) => guest.id));
+  const parent = new Map(lodgingGuests.map((guest) => [guest.id, guest.id]));
+
+  function find(id) {
+    const current = parent.get(id);
+    if (current === id) return id;
+    const root = find(current);
+    parent.set(id, root);
+    return root;
+  }
+
+  function union(a, b) {
+    if (!parent.has(a) || !parent.has(b)) return;
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent.set(rootB, rootA);
+  }
 
   lodgingGuests.forEach((guest) => {
-    if (grouped.has(guest.id)) return;
-    const related = relatedGuest(guest);
-    if (related?.lodging) {
-      grouped.add(guest.id);
-      grouped.add(related.id);
-      rooms += 1;
-      return;
+    const relatedId = Number(guest.relatedGuestId);
+    if (lodgingIds.has(relatedId)) {
+      union(guest.id, relatedId);
     }
-    grouped.add(guest.id);
-    rooms += 1;
   });
 
+  const rooms = new Set(lodgingGuests.map((guest) => find(guest.id))).size;
   return { people, rooms };
 }
 
