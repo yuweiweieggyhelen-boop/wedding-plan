@@ -136,17 +136,18 @@
           </div>
         </section>
 
-        <section class="view" id="tasksView" aria-labelledby="tasksTitle">
+        <section class="view" id="tasksView" aria-label="任务管理">
           <div class="section-heading">
             <div>
-              <h2 id="tasksTitle">任务管理</h2>
               <p>在看板里推进任务，也可以切到日历纵览截止日期。</p>
             </div>
-            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
           </div>
-          <div class="view-switch" role="tablist" aria-label="任务视图">
-            <button class="active" type="button" data-task-tab="board">看板</button>
-            <button type="button" data-task-tab="calendar">日历</button>
+          <div class="subview-toolbar">
+            <div class="view-switch" role="tablist" aria-label="任务视图">
+              <button class="active" type="button" data-task-tab="board">看板</button>
+              <button type="button" data-task-tab="calendar">日历</button>
+            </div>
+            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
           </div>
           <div class="nested-view active" id="taskBoardPanel">
             <div class="board" id="taskBoard"></div>
@@ -166,10 +167,9 @@
           </div>
         </section>
 
-        <section class="view" id="budgetView" aria-labelledby="budgetTitle">
+        <section class="view" id="budgetView" aria-label="预算管理">
           <div class="section-heading">
             <div>
-              <h2 id="budgetTitle">预算管理</h2>
               <p>先建预算项目，再根据供应商报价和付款节点持续更新已付与尾款。</p>
             </div>
             <button class="primary-button" type="button" data-open-modal="budgetModal">添加预算</button>
@@ -193,10 +193,9 @@
           </div>
         </section>
 
-        <section class="view" id="vendorsView" aria-labelledby="vendorsTitle">
+        <section class="view" id="vendorsView" aria-label="供应商管理">
           <div class="section-heading">
             <div>
-              <h2 id="vendorsTitle">供应商管理</h2>
               <p>左侧维护供应商库；点“最终选择”后，供应商会进入右侧确认区。</p>
             </div>
             <button class="primary-button" type="button" data-open-modal="vendorModal">添加供应商</button>
@@ -223,17 +222,19 @@
           </div>
         </section>
 
-        <section class="view" id="guestsView" aria-labelledby="guestsTitle">
+        <section class="view" id="guestsView" aria-label="宾客管理">
           <div class="section-heading">
             <div>
-              <h2 id="guestsTitle">宾客管理</h2>
               <p>名单里维护宾客信息，排桌里安排座位。</p>
             </div>
-            <button class="primary-button" type="button" data-open-modal="guestModal">添加宾客</button>
           </div>
-          <div class="view-switch" role="tablist" aria-label="宾客视图">
-            <button class="active" type="button" data-guest-tab="list">宾客名单</button>
-            <button type="button" data-guest-tab="seating">宾客排桌</button>
+          <div class="subview-toolbar">
+            <div class="view-switch" role="tablist" aria-label="宾客视图">
+              <button class="active" type="button" data-guest-tab="list">宾客名单</button>
+              <button type="button" data-guest-tab="seating">宾客排桌</button>
+            </div>
+            <button class="primary-button" type="button" id="guestListActionButton" data-open-modal="guestModal">添加宾客</button>
+            <button class="primary-button hidden" type="button" id="addTableButton">添加桌子</button>
           </div>
           <div class="nested-view active" id="guestListPanel">
             <div class="filter-row">
@@ -263,7 +264,6 @@
           <div class="nested-view" id="guestSeatingPanel">
             <div class="panel-heading inline-panel-heading">
               <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，带伴侣出席的宾客按 2 人计算。</p>
-              <button class="primary-button" type="button" id="addTableButton">添加桌子</button>
             </div>
             <div class="seating-layout">
               <section class="seating-stage" id="seatingTables" aria-label="桌位图"></section>
@@ -272,10 +272,9 @@
           </div>
         </section>
 
-        <section class="view" id="timelineView" aria-labelledby="timelineTitle">
+        <section class="view" id="timelineView" aria-label="婚礼当天流程">
           <div class="section-heading">
             <div>
-              <h2 id="timelineTitle">婚礼当天流程</h2>
               <p>把时间、负责人和物料检查放进执行表。</p>
             </div>
           </div>

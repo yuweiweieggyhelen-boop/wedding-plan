@@ -437,6 +437,8 @@ function setGuestTab(tabName) {
   });
   document.querySelector("#guestListPanel").classList.toggle("active", tabName === "list");
   document.querySelector("#guestSeatingPanel").classList.toggle("active", tabName === "seating");
+  document.querySelector("#guestListActionButton").classList.toggle("hidden", tabName !== "list");
+  document.querySelector("#addTableButton").classList.toggle("hidden", tabName !== "seating");
 }
 
 function renderOverview() {
