@@ -46,22 +46,18 @@ const taskCategories = ["统筹", "场地", "供应商", "宾客", "预算", "�
 const views = {
   overview: document.querySelector("#overviewView"),
   tasks: document.querySelector("#tasksView"),
-  calendar: document.querySelector("#calendarView"),
   budget: document.querySelector("#budgetView"),
   vendors: document.querySelector("#vendorsView"),
   guests: document.querySelector("#guestsView"),
-  seating: document.querySelector("#seatingView"),
   timeline: document.querySelector("#timelineView")
 };
 
 const titles = {
   overview: "总览仪表盘",
-  tasks: "任务看板",
-  calendar: "任务日历",
+  tasks: "任务管理",
   budget: "预算管理",
   vendors: "供应商管理",
   guests: "宾客管理",
-  seating: "宾客排桌",
   timeline: "婚礼当天流程"
 };
 
@@ -424,6 +420,23 @@ function setView(viewName) {
   Object.entries(views).forEach(([name, element]) => element.classList.toggle("active", name === viewName));
   document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   document.querySelector("#pageTitle").textContent = titles[viewName];
+  document.querySelector("#heroPanel").classList.toggle("hidden", viewName !== "overview");
+}
+
+function setTaskTab(tabName) {
+  document.querySelectorAll("[data-task-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.taskTab === tabName);
+  });
+  document.querySelector("#taskBoardPanel").classList.toggle("active", tabName === "board");
+  document.querySelector("#taskCalendarPanel").classList.toggle("active", tabName === "calendar");
+}
+
+function setGuestTab(tabName) {
+  document.querySelectorAll("[data-guest-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.guestTab === tabName);
+  });
+  document.querySelector("#guestListPanel").classList.toggle("active", tabName === "list");
+  document.querySelector("#guestSeatingPanel").classList.toggle("active", tabName === "seating");
 }
 
 function renderOverview() {
@@ -1047,6 +1060,14 @@ function closeModal(id) {
 document.querySelector("#navList").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view]");
   if (button) setView(button.dataset.view);
+});
+
+document.querySelectorAll("[data-task-tab]").forEach((button) => {
+  button.addEventListener("click", () => setTaskTab(button.dataset.taskTab));
+});
+
+document.querySelectorAll("[data-guest-tab]").forEach((button) => {
+  button.addEventListener("click", () => setGuestTab(button.dataset.guestTab));
 });
 
 document.body.addEventListener("click", async (event) => {

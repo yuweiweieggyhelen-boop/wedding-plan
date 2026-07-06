@@ -46,11 +46,9 @@
         <nav class="nav-list" id="navList">
           <button class="nav-item active" data-view="overview"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>总览</button>
           <button class="nav-item" data-view="tasks"><span class="material-symbols-outlined" aria-hidden="true">checklist</span>任务</button>
-          <button class="nav-item" data-view="calendar"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>日历</button>
           <button class="nav-item" data-view="budget"><span class="material-symbols-outlined" aria-hidden="true">payments</span>预算</button>
           <button class="nav-item" data-view="vendors"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>供应商</button>
           <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
-          <button class="nav-item" data-view="seating"><span class="material-symbols-outlined" aria-hidden="true">table_bar</span>排桌</button>
           <button class="nav-item" data-view="timeline"><span class="material-symbols-outlined" aria-hidden="true">event</span>当天流程</button>
         </nav>
 
@@ -79,7 +77,7 @@
           </div>
         </header>
 
-        <section class="hero-panel" aria-label="项目概览">
+        <section class="hero-panel" id="heroPanel" aria-label="项目概览">
           <div>
             <span id="countdownLabel">距离婚礼还有</span>
             <strong id="daysLeft">-- 天</strong>
@@ -141,32 +139,31 @@
         <section class="view" id="tasksView" aria-labelledby="tasksTitle">
           <div class="section-heading">
             <div>
-              <h2 id="tasksTitle">任务看板</h2>
-              <p>按阶段、负责人、截止日期推进备婚事项。</p>
+              <h2 id="tasksTitle">任务管理</h2>
+              <p>在看板里推进任务，也可以切到日历纵览截止日期。</p>
             </div>
             <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
           </div>
-          <div class="board" id="taskBoard"></div>
-        </section>
+          <div class="view-switch" role="tablist" aria-label="任务视图">
+            <button class="active" type="button" data-task-tab="board">看板</button>
+            <button type="button" data-task-tab="calendar">日历</button>
+          </div>
+          <div class="nested-view active" id="taskBoardPanel">
+            <div class="board" id="taskBoard"></div>
+          </div>
 
-        <section class="view" id="calendarView" aria-labelledby="calendarTitle">
-          <div class="section-heading">
-            <div>
-              <h2 id="calendarTitle">任务日历</h2>
-              <p>按截止日期纵览任务分布，点击任务可直接编辑。</p>
+          <div class="nested-view" id="taskCalendarPanel">
+            <div class="calendar-toolbar">
+              <button class="secondary-button" type="button" id="calendarPrevButton">上个月</button>
+              <div>
+                <strong id="calendarMonthLabel">--</strong>
+                <span id="calendarSummary">--</span>
+              </div>
+              <button class="secondary-button" type="button" id="calendarNextButton">下个月</button>
             </div>
-            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
+            <div class="calendar-grid" id="taskCalendar" aria-label="任务日历"></div>
+            <div class="empty-state hidden" id="calendarEmpty">暂无任务。添加任务并设置截止日期后，会显示在日历上。</div>
           </div>
-          <div class="calendar-toolbar">
-            <button class="secondary-button" type="button" id="calendarPrevButton">上个月</button>
-            <div>
-              <strong id="calendarMonthLabel">--</strong>
-              <span id="calendarSummary">--</span>
-            </div>
-            <button class="secondary-button" type="button" id="calendarNextButton">下个月</button>
-          </div>
-          <div class="calendar-grid" id="taskCalendar" aria-label="任务日历"></div>
-          <div class="empty-state hidden" id="calendarEmpty">暂无任务。添加任务并设置截止日期后，会显示在日历上。</div>
         </section>
 
         <section class="view" id="budgetView" aria-labelledby="budgetTitle">
@@ -230,45 +227,48 @@
           <div class="section-heading">
             <div>
               <h2 id="guestsTitle">宾客管理</h2>
-              <p>列表维护宾客信息，最右侧一键确认是否出席。</p>
+              <p>名单里维护宾客信息，排桌里安排座位。</p>
             </div>
             <button class="primary-button" type="button" data-open-modal="guestModal">添加宾客</button>
           </div>
-          <div class="filter-row">
-            <label for="guestFilter">标签筛选</label>
-            <select id="guestFilter"></select>
+          <div class="view-switch" role="tablist" aria-label="宾客视图">
+            <button class="active" type="button" data-guest-tab="list">宾客名单</button>
+            <button type="button" data-guest-tab="seating">宾客排桌</button>
           </div>
-          <div class="data-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>姓名</th>
-                  <th>类别</th>
-                  <th>带伴侣</th>
-                  <th>人数</th>
-                  <th>住宿</th>
-                  <th>同住关联</th>
-                  <th>备注</th>
-                  <th>操作</th>
-                  <th>出席</th>
-                </tr>
-              </thead>
-              <tbody id="guestTable"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="view" id="seatingView" aria-labelledby="seatingTitle">
-          <div class="section-heading">
-            <div>
-              <h2 id="seatingTitle">宾客排桌</h2>
-              <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，带伴侣出席的宾客按 2 人计算。</p>
+          <div class="nested-view active" id="guestListPanel">
+            <div class="filter-row">
+              <label for="guestFilter">标签筛选</label>
+              <select id="guestFilter"></select>
             </div>
-            <button class="primary-button" type="button" id="addTableButton">添加桌子</button>
+            <div class="data-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>类别</th>
+                    <th>带伴侣</th>
+                    <th>人数</th>
+                    <th>住宿</th>
+                    <th>同住关联</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                    <th>出席</th>
+                  </tr>
+                </thead>
+                <tbody id="guestTable"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="seating-layout">
-            <section class="seating-stage" id="seatingTables" aria-label="桌位图"></section>
-            <aside class="guest-pool" id="guestPool" aria-label="未安排宾客"></aside>
+
+          <div class="nested-view" id="guestSeatingPanel">
+            <div class="panel-heading inline-panel-heading">
+              <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，带伴侣出席的宾客按 2 人计算。</p>
+              <button class="primary-button" type="button" id="addTableButton">添加桌子</button>
+            </div>
+            <div class="seating-layout">
+              <section class="seating-stage" id="seatingTables" aria-label="桌位图"></section>
+              <aside class="guest-pool" id="guestPool" aria-label="未安排宾客"></aside>
+            </div>
           </div>
         </section>
 
