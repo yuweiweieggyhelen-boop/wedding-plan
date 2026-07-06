@@ -39,11 +39,14 @@ let vendorImageUrls = new Map();
 let pendingCover = "";
 let guestFilter = "all";
 let vendorFilter = "all";
+let calendarMonth = new Date();
+let calendarMonthInitialized = false;
 const taskCategories = ["统筹", "场地", "供应商", "宾客", "预算", "设计", "采购", "当天流程"];
 
 const views = {
   overview: document.querySelector("#overviewView"),
   tasks: document.querySelector("#tasksView"),
+  calendar: document.querySelector("#calendarView"),
   budget: document.querySelector("#budgetView"),
   vendors: document.querySelector("#vendorsView"),
   guests: document.querySelector("#guestsView"),
@@ -54,6 +57,7 @@ const views = {
 const titles = {
   overview: "总览仪表盘",
   tasks: "任务看板",
+  calendar: "任务日历",
   budget: "预算管理",
   vendors: "供应商管理",
   guests: "宾客管理",
@@ -398,6 +402,24 @@ function daysBetween(dateString) {
   return Math.ceil((target - today) / 86400000);
 }
 
+function parseDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function monthLabel(date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
 function setView(viewName) {
   Object.entries(views).forEach(([name, element]) => element.classList.toggle("active", name === viewName));
   document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
@@ -536,6 +558,76 @@ function renderTasks() {
       return `<section class="board-column"><h3>${label}</h3>${cards || emptyState("暂无任务")}</section>`;
     })
     .join("");
+}
+
+function initialCalendarMonth() {
+  const datedTasks = state.tasks
+    .map((task) => ({ task, date: parseDate(task.due) }))
+    .filter((item) => item.date)
+    .sort((a, b) => a.date - b.date);
+  const nextOpenTask = datedTasks.find((item) => item.task.status !== "done") || datedTasks[0];
+  const date = nextOpenTask?.date || new Date();
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function renderCalendar() {
+  if (!document.querySelector("#taskCalendar")) return;
+  if (!calendarMonthInitialized) {
+    calendarMonth = initialCalendarMonth();
+    calendarMonthInitialized = true;
+  }
+  const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+  const todayKey = formatDateKey(new Date());
+  const tasksByDate = state.tasks.reduce((groups, task) => {
+    if (!task.due) return groups;
+    if (!groups.has(task.due)) groups.set(task.due, []);
+    groups.get(task.due).push(task);
+    return groups;
+  }, new Map());
+
+  document.querySelector("#calendarMonthLabel").textContent = monthLabel(monthStart);
+  document.querySelector("#calendarSummary").textContent = `${state.tasks.length} 个任务 · ${state.tasks.filter((task) => task.status !== "done").length} 个未完成`;
+
+  const weekdayHeader = ["日", "一", "二", "三", "四", "五", "六"]
+    .map((day) => `<div class="calendar-weekday">${day}</div>`)
+    .join("");
+  const dayCells = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const key = formatDateKey(date);
+    const dayTasks = (tasksByDate.get(key) || []).sort((a, b) => taskStatusRank(a.status) - taskStatusRank(b.status));
+    const isMuted = date.getMonth() !== monthStart.getMonth();
+    const isToday = key === todayKey;
+    return `
+      <article class="${["calendar-day", isMuted ? "muted" : "", isToday ? "today" : ""].filter(Boolean).join(" ")}">
+        <div class="calendar-day-head">
+          <span>${date.getDate()}</span>
+          ${dayTasks.length ? `<strong>${dayTasks.length}</strong>` : ""}
+        </div>
+        <div class="calendar-task-list">
+          ${dayTasks.map(renderCalendarTask).join("")}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  document.querySelector("#taskCalendar").innerHTML = weekdayHeader + dayCells;
+  document.querySelector("#calendarEmpty").classList.toggle("hidden", state.tasks.length > 0);
+}
+
+function taskStatusRank(status) {
+  return { todo: 0, doing: 1, review: 2, done: 3 }[status] ?? 0;
+}
+
+function renderCalendarTask(task) {
+  const status = ["todo", "doing", "review", "done"].includes(task.status) ? task.status : "todo";
+  return `
+    <button class="calendar-task ${status}" type="button" data-task-edit="${task.id}" title="${text(task.title)}">
+      <span>${text(task.title)}</span>
+    </button>
+  `;
 }
 
 function renderTaskCard(task) {
@@ -915,6 +1007,7 @@ function renderAll() {
   document.querySelector("#weddingDate").value = state.weddingDate;
   renderOverview();
   renderTasks();
+  renderCalendar();
   renderBudget();
   renderVendors();
   renderGuests();
@@ -1199,6 +1292,18 @@ document.querySelector("#weddingDate").addEventListener("change", (event) => {
   state.weddingDate = event.target.value;
   saveState();
   renderAll();
+});
+
+document.querySelector("#calendarPrevButton")?.addEventListener("click", () => {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+  calendarMonthInitialized = true;
+  renderCalendar();
+});
+
+document.querySelector("#calendarNextButton")?.addEventListener("click", () => {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  calendarMonthInitialized = true;
+  renderCalendar();
 });
 
 document.querySelector("#taskForm").addEventListener("submit", (event) => {

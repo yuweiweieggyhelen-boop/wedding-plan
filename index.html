@@ -46,6 +46,7 @@
         <nav class="nav-list" id="navList">
           <button class="nav-item active" data-view="overview"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>总览</button>
           <button class="nav-item" data-view="tasks"><span class="material-symbols-outlined" aria-hidden="true">checklist</span>任务</button>
+          <button class="nav-item" data-view="calendar"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>日历</button>
           <button class="nav-item" data-view="budget"><span class="material-symbols-outlined" aria-hidden="true">payments</span>预算</button>
           <button class="nav-item" data-view="vendors"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>供应商</button>
           <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
@@ -146,6 +147,26 @@
             <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
           </div>
           <div class="board" id="taskBoard"></div>
+        </section>
+
+        <section class="view" id="calendarView" aria-labelledby="calendarTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="calendarTitle">任务日历</h2>
+              <p>按截止日期纵览任务分布，点击任务可直接编辑。</p>
+            </div>
+            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
+          </div>
+          <div class="calendar-toolbar">
+            <button class="secondary-button" type="button" id="calendarPrevButton">上个月</button>
+            <div>
+              <strong id="calendarMonthLabel">--</strong>
+              <span id="calendarSummary">--</span>
+            </div>
+            <button class="secondary-button" type="button" id="calendarNextButton">下个月</button>
+          </div>
+          <div class="calendar-grid" id="taskCalendar" aria-label="任务日历"></div>
+          <div class="empty-state hidden" id="calendarEmpty">暂无任务。添加任务并设置截止日期后，会显示在日历上。</div>
         </section>
 
         <section class="view" id="budgetView" aria-labelledby="budgetTitle">
