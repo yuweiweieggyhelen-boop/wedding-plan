@@ -386,7 +386,8 @@ h3 {
 }
 
 input,
-textarea {
+textarea,
+select {
   min-height: 42px;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -399,6 +400,15 @@ textarea {
   min-height: 120px;
   padding: 12px;
   resize: vertical;
+}
+
+select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 small {
@@ -509,7 +519,7 @@ small {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -756,6 +766,20 @@ small {
 .pill.warn {
   background: var(--warn-bg);
   color: var(--danger);
+}
+
+.filter-row {
+  display: inline-grid;
+  grid-template-columns: auto minmax(180px, 260px);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.filter-row label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .amount-pill {
@@ -1196,6 +1220,22 @@ dd {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.inline-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.inline-field label {
+  min-width: 0;
+}
+
+.inline-field .secondary-button {
+  min-height: 42px;
+  white-space: nowrap;
 }
 
 .check-row {

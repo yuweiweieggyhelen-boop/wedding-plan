@@ -12,6 +12,7 @@ const initialState = {
   weddingDate: "2026-10-18",
   cover: "",
   coverY: 50,
+  guestTags: ["男方亲戚", "女方亲戚", "男方同学", "女方同学"],
   tasks: [],
   budget: [],
   vendors: [],
@@ -35,6 +36,7 @@ let remoteSaveTimer = 0;
 let vendorDbPromise;
 let vendorImageUrls = new Map();
 let pendingCover = "";
+let guestFilter = "all";
 
 const views = {
   overview: document.querySelector("#overviewView"),
@@ -69,6 +71,15 @@ function loadState() {
 function normalizeState(value) {
   if (!("cover" in value)) value.cover = "";
   if (!("coverY" in value)) value.coverY = 50;
+  if (!Array.isArray(value.guestTags) || !value.guestTags.length) {
+    value.guestTags = structuredClone(initialState.guestTags);
+  }
+  value.guestTags = [...new Set([...initialState.guestTags, ...value.guestTags].filter(Boolean))];
+  if (!Array.isArray(value.guests)) value.guests = [];
+  value.guests.forEach((guest) => {
+    if (!("relatedGuestId" in guest)) guest.relatedGuestId = "";
+    if (!guest.group) guest.group = "女方亲戚";
+  });
   if (!value.seating) value.seating = structuredClone(initialState.seating);
   if (!Array.isArray(value.seating.tables) || !value.seating.tables.length) {
     value.seating.tables = structuredClone(initialState.seating.tables);
@@ -386,6 +397,7 @@ function renderOverview() {
   const progress = state.tasks.length ? Math.round((completed / state.tasks.length) * 100) : 0;
   const planned = state.budget.reduce((sum, item) => sum + Number(item.planned), 0);
   const paid = state.budget.reduce((sum, item) => sum + Number(item.paid), 0);
+  const lodging = lodgingStats();
   const confirmed = state.guests
     .filter((guest) => guest.confirmed)
     .reduce((sum, guest) => sum + guestCount(guest), 0);
@@ -400,6 +412,8 @@ function renderOverview() {
   document.querySelector("#budgetTotal").textContent = `总预算 ${money(planned)}`;
   document.querySelector("#guestConfirmed").textContent = `${confirmed} 人`;
   document.querySelector("#guestTotal").textContent = `宾客总数 ${guestTotal} 人`;
+  document.querySelector("#lodgingPeople").textContent = `${lodging.people} 人`;
+  document.querySelector("#lodgingRooms").textContent = `预计 ${lodging.rooms} 间房`;
   document.querySelector("#selectedVendorCount").textContent = `${selectedVendors} 个`;
 
   const activeTasks = state.tasks
@@ -419,6 +433,33 @@ function guestCount(guest) {
 
 function guestLabel(guest) {
   return guest.plusOne ? `${guest.name}2人` : guest.name;
+}
+
+function relatedGuest(guest) {
+  if (!guest?.relatedGuestId) return null;
+  return getGuest(guest.relatedGuestId);
+}
+
+function lodgingStats() {
+  const lodgingGuests = state.guests.filter((guest) => guest.lodging);
+  const people = lodgingGuests.reduce((sum, guest) => sum + guestCount(guest), 0);
+  const grouped = new Set();
+  let rooms = 0;
+
+  lodgingGuests.forEach((guest) => {
+    if (grouped.has(guest.id)) return;
+    const related = relatedGuest(guest);
+    if (related?.lodging) {
+      grouped.add(guest.id);
+      grouped.add(related.id);
+      rooms += 1;
+      return;
+    }
+    grouped.add(guest.id);
+    rooms += 1;
+  });
+
+  return { people, rooms };
 }
 
 function getGuest(id) {
@@ -562,22 +603,41 @@ async function renderVendorCard(vendor) {
 }
 
 function renderGuests() {
-  document.querySelector("#guestTable").innerHTML = state.guests
+  const filter = document.querySelector("#guestFilter");
+  if (filter) {
+    filter.innerHTML = `<option value="all">全部标签</option>${state.guestTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("")}`;
+    filter.value = state.guestTags.includes(guestFilter) ? guestFilter : "all";
+  }
+
+  const visibleGuests = guestFilter === "all" ? state.guests : state.guests.filter((guest) => guest.group === guestFilter);
+  document.querySelector("#guestTable").innerHTML = visibleGuests
     .map(
-      (guest) => `
+      (guest) => {
+        const related = relatedGuest(guest);
+        return `
       <tr>
         <td>${text(guest.name)}</td>
         <td>${text(guest.group)}</td>
         <td>${guest.plusOne ? "是" : "否"}</td>
         <td>${guestCount(guest)} 人</td>
         <td>${guest.lodging ? "需要" : "不需要"}</td>
+        <td>${related ? text(related.name) : "无"}</td>
         <td>${text(guest.note || "无")}</td>
         <td><button class="text-button danger" type="button" data-guest-delete="${guest.id}">删除</button></td>
         <td class="attendance-cell"><button class="${guest.confirmed ? "status-button active" : "status-button"}" type="button" data-guest-toggle="${guest.id}">${guest.confirmed ? "已出席" : "待确认"}</button></td>
       </tr>
-    `
+    `;
+      }
     )
-    .join("");
+    .join("") || `<tr><td colspan="9">${emptyState("暂无匹配宾客")}</td></tr>`;
+}
+
+function renderGuestFormOptions() {
+  const groupSelect = document.querySelector("#guestGroupSelect");
+  const relatedList = document.querySelector("#guestRelationList");
+  if (!groupSelect || !relatedList) return;
+  groupSelect.innerHTML = state.guestTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
+  relatedList.innerHTML = state.guests.map((guest) => `<option value="${text(guest.name)}"></option>`).join("");
 }
 
 function renderSeating() {
@@ -752,6 +812,7 @@ function openModal(id) {
   const form = modal.querySelector("form");
   form?.reset();
   if (id === "accountModal") renderUser();
+  if (id === "guestModal") renderGuestFormOptions();
   if (typeof modal.showModal === "function") modal.showModal();
   else modal.setAttribute("open", "");
 }
@@ -837,6 +898,9 @@ document.body.addEventListener("click", async (event) => {
     const guest = state.guests.find((item) => item.id === Number(guestDelete.dataset.guestDelete));
     if (!guest || !window.confirm(`确定删除“${guest.name}”吗？`)) return;
     state.guests = state.guests.filter((item) => item.id !== guest.id);
+    state.guests.forEach((item) => {
+      if (Number(item.relatedGuestId) === guest.id) item.relatedGuestId = "";
+    });
     state.seating.tables.forEach((table) => {
       table.guestIds = table.guestIds.filter((id) => id !== guest.id);
     });
@@ -922,6 +986,22 @@ document.querySelector("#addTableButton").addEventListener("click", () => {
   state.seating.tables.push({ id: Date.now(), name: `${next}桌`, guestIds: [] });
   saveState();
   renderAll();
+});
+
+document.querySelector("#guestFilter").addEventListener("change", (event) => {
+  guestFilter = event.target.value;
+  renderGuests();
+});
+
+document.querySelector("#addGuestTagButton").addEventListener("click", () => {
+  const label = window.prompt("新标签名称，例如：男方同事");
+  const tag = label?.trim();
+  if (!tag) return;
+  if (!state.guestTags.includes(tag)) state.guestTags.push(tag);
+  saveState();
+  renderGuestFormOptions();
+  document.querySelector("#guestGroupSelect").value = tag;
+  renderGuests();
 });
 
 function removeGuestFromTables(guestId) {
@@ -1016,12 +1096,14 @@ document.querySelector("#guestForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
+  const related = state.guests.find((guest) => guest.name === data.relatedGuestName);
   state.guests.push({
     id: Date.now(),
     name: data.name,
     group: data.group,
     plusOne: Boolean(data.plusOne),
     lodging: Boolean(data.lodging),
+    relatedGuestId: related?.id || "",
     note: data.note,
     confirmed: false
   });

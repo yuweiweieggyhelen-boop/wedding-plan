@@ -106,6 +106,11 @@
               <strong id="guestConfirmed">0 人</strong>
               <small id="guestTotal">宾客总数 0 人</small>
             </article>
+            <article class="metric">
+              <span>住宿安排</span>
+              <strong id="lodgingPeople">0 人</strong>
+              <small id="lodgingRooms">预计 0 间房</small>
+            </article>
             <article class="metric attention">
               <span>最终供应商</span>
               <strong id="selectedVendorCount">0 个</strong>
@@ -204,15 +209,20 @@
             </div>
             <button class="primary-button" type="button" data-open-modal="guestModal">添加宾客</button>
           </div>
+          <div class="filter-row">
+            <label for="guestFilter">标签筛选</label>
+            <select id="guestFilter"></select>
+          </div>
           <div class="data-table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>姓名</th>
                   <th>类别</th>
-                  <th>+1</th>
+                  <th>带伴侣</th>
                   <th>人数</th>
                   <th>住宿</th>
+                  <th>同住关联</th>
                   <th>备注</th>
                   <th>操作</th>
                   <th>出席</th>
@@ -227,7 +237,7 @@
           <div class="section-heading">
             <div>
               <h2 id="seatingTitle">宾客排桌</h2>
-              <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，+1 宾客按 2 人计算。</p>
+              <p>右侧拖动宾客到左侧桌子。每桌最多 10 人，带伴侣出席的宾客按 2 人计算。</p>
             </div>
             <button class="primary-button" type="button" id="addTableButton">添加桌子</button>
           </div>
@@ -307,9 +317,21 @@
           <button class="icon-button" type="button" data-close-modal="guestModal" aria-label="关闭">×</button>
         </div>
         <label><span>宾客姓名</span><input name="name" required /></label>
-        <label><span>宾客类别</span><input name="group" placeholder="女方亲友 / 男方亲友 / 朋友 / 同事" required /></label>
+        <div class="inline-field">
+          <label>
+            <span>宾客类别</span>
+            <select name="group" id="guestGroupSelect" required></select>
+          </label>
+          <button class="secondary-button" type="button" id="addGuestTagButton">添加标签</button>
+        </div>
+        <label>
+          <span>同住关联宾客</span>
+          <input name="relatedGuestName" list="guestRelationList" placeholder="搜索已填写宾客姓名，可不填" />
+          <datalist id="guestRelationList"></datalist>
+          <small>如果两位宾客单独建档但住同一间房，在这里关联；这种情况不要再勾“带伴侣”。</small>
+        </label>
         <div class="check-row">
-          <label><input name="plusOne" type="checkbox" /> 是否有 +1</label>
+          <label><input name="plusOne" type="checkbox" /> 是否带伴侣出席</label>
           <label><input name="lodging" type="checkbox" /> 是否需要住宿</label>
         </div>
         <label><span>备注</span><textarea name="note" rows="4"></textarea></label>
