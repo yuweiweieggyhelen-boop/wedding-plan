@@ -13,6 +13,7 @@ const initialState = {
   cover: "",
   coverY: 50,
   guestTags: ["男方亲戚", "女方亲戚", "男方同学", "女方同学"],
+  vendorTags: ["摄影", "摄像", "婚庆", "酒店", "司仪", "化妆", "花艺", "甜品", "礼服"],
   tasks: [],
   budget: [],
   vendors: [],
@@ -37,6 +38,7 @@ let vendorDbPromise;
 let vendorImageUrls = new Map();
 let pendingCover = "";
 let guestFilter = "all";
+let vendorFilter = "all";
 const taskCategories = ["统筹", "场地", "供应商", "宾客", "预算", "设计", "采购", "当天流程"];
 
 const views = {
@@ -76,6 +78,15 @@ function normalizeState(value) {
     value.guestTags = structuredClone(initialState.guestTags);
   }
   value.guestTags = [...new Set([...initialState.guestTags, ...value.guestTags].filter(Boolean))];
+  if (!Array.isArray(value.vendorTags) || !value.vendorTags.length) {
+    value.vendorTags = structuredClone(initialState.vendorTags);
+  }
+  value.vendorTags = [...new Set([...initialState.vendorTags, ...value.vendorTags].filter(Boolean))];
+  if (!Array.isArray(value.vendors)) value.vendors = [];
+  value.vendors.forEach((vendor) => {
+    if (!vendor.type) vendor.type = "摄影";
+    if (!value.vendorTags.includes(vendor.type)) value.vendorTags.push(vendor.type);
+  });
   if (!Array.isArray(value.guests)) value.guests = [];
   value.guests.forEach((guest) => {
     if (!("relatedGuestId" in guest)) guest.relatedGuestId = "";
@@ -542,6 +553,7 @@ function renderTaskCard(task) {
         <span class="${days < 0 && task.status !== "done" ? "pill warn" : "pill"}">${text(task.due)}</span>
       </div>
       <div class="task-actions">
+        <button class="secondary-button" type="button" data-task-edit="${task.id}">编辑</button>
         <button class="secondary-button" type="button" data-task-move="${task.id}">推进</button>
         <button class="secondary-button" type="button" data-task-done="${task.id}">完成</button>
       </div>
@@ -581,8 +593,15 @@ function renderBudget() {
 }
 
 async function renderVendors() {
-  const library = state.vendors.filter((vendor) => !vendor.selected);
-  const selected = state.vendors.filter((vendor) => vendor.selected);
+  const filter = document.querySelector("#vendorFilter");
+  if (filter) {
+    filter.innerHTML = `<option value="all">全部类别</option>${state.vendorTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("")}`;
+    filter.value = state.vendorTags.includes(vendorFilter) ? vendorFilter : "all";
+  }
+
+  const visibleVendors = vendorFilter === "all" ? state.vendors : state.vendors.filter((vendor) => vendor.type === vendorFilter);
+  const library = visibleVendors.filter((vendor) => !vendor.selected);
+  const selected = visibleVendors.filter((vendor) => vendor.selected);
   document.querySelector("#vendorLibraryCount").textContent = library.length;
   document.querySelector("#vendorSelectedCount").textContent = selected.length;
   document.querySelector("#vendorLibrary").innerHTML = (await Promise.all(library.map(renderVendorCard))).join("") || emptyState("暂无供应商");
@@ -634,7 +653,10 @@ function renderGuests() {
         <td>${guest.lodging ? "需要" : "不需要"}</td>
         <td>${related ? text(related.name) : "无"}</td>
         <td>${text(guest.note || "无")}</td>
-        <td><button class="text-button danger" type="button" data-guest-delete="${guest.id}">删除</button></td>
+        <td class="table-actions">
+          <button class="text-button" type="button" data-guest-edit="${guest.id}">编辑</button>
+          <button class="text-button danger" type="button" data-guest-delete="${guest.id}">删除</button>
+        </td>
         <td class="attendance-cell"><button class="${guest.confirmed ? "status-button active" : "status-button"}" type="button" data-guest-toggle="${guest.id}">${guest.confirmed ? "已出席" : "待确认"}</button></td>
       </tr>
     `;
@@ -647,8 +669,18 @@ function renderGuestFormOptions() {
   const groupSelect = document.querySelector("#guestGroupSelect");
   const relatedList = document.querySelector("#guestRelationList");
   if (!groupSelect || !relatedList) return;
+  const editingId = Number(document.querySelector("#guestForm").dataset.editingId || 0);
   groupSelect.innerHTML = state.guestTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
-  relatedList.innerHTML = state.guests.map((guest) => `<option value="${text(guest.name)}"></option>`).join("");
+  relatedList.innerHTML = state.guests
+    .filter((guest) => guest.id !== editingId)
+    .map((guest) => `<option value="${text(guest.name)}"></option>`)
+    .join("");
+}
+
+function renderVendorFormOptions() {
+  const typeSelect = document.querySelector("#vendorTypeSelect");
+  if (!typeSelect) return;
+  typeSelect.innerHTML = state.vendorTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
 }
 
 function memberDisplayName(member) {
@@ -670,6 +702,62 @@ function renderTaskFormOptions() {
     return `<option value="${text(label)}">${text(label)}</option>`;
   }).join("");
   dueInput.value = state.weddingDate;
+}
+
+function resetTaskFormMode() {
+  const form = document.querySelector("#taskForm");
+  form.dataset.editingId = "";
+  document.querySelector("#taskModalTitle").textContent = "添加任务";
+  document.querySelector("#taskSubmitButton").textContent = "保存任务";
+}
+
+function openTaskEditor(taskId) {
+  const task = state.tasks.find((item) => item.id === Number(taskId));
+  if (!task) return;
+  openModal("taskModal");
+  const form = document.querySelector("#taskForm");
+  form.dataset.editingId = String(task.id);
+  renderTaskFormOptions();
+  document.querySelector("#taskModalTitle").textContent = "编辑任务";
+  document.querySelector("#taskSubmitButton").textContent = "保存修改";
+  form.elements.title.value = task.title || "";
+  form.elements.details.value = task.details || "";
+  if (![...form.elements.phase.options].some((option) => option.value === task.phase)) {
+    form.elements.phase.add(new Option(task.phase || "统筹", task.phase || "统筹"));
+  }
+  form.elements.phase.value = task.phase || "统筹";
+  form.elements.due.value = task.due || state.weddingDate;
+  if (![...form.elements.owner.options].some((option) => option.value === task.owner)) {
+    form.elements.owner.add(new Option(task.owner || "未分配", task.owner || "未分配"));
+  }
+  form.elements.owner.value = task.owner || "";
+}
+
+function resetGuestFormMode() {
+  const form = document.querySelector("#guestForm");
+  form.dataset.editingId = "";
+  document.querySelector("#guestModalTitle").textContent = "添加宾客";
+  document.querySelector("#guestSubmitButton").textContent = "保存宾客";
+}
+
+function openGuestEditor(guestId) {
+  const guest = state.guests.find((item) => item.id === Number(guestId));
+  if (!guest) return;
+  openModal("guestModal");
+  const form = document.querySelector("#guestForm");
+  form.dataset.editingId = String(guest.id);
+  renderGuestFormOptions();
+  document.querySelector("#guestModalTitle").textContent = "编辑宾客";
+  document.querySelector("#guestSubmitButton").textContent = "保存修改";
+  form.elements.name.value = guest.name || "";
+  if (![...form.elements.group.options].some((option) => option.value === guest.group)) {
+    form.elements.group.add(new Option(guest.group || "男方亲戚", guest.group || "男方亲戚"));
+  }
+  form.elements.group.value = guest.group || "男方亲戚";
+  form.elements.relatedGuestName.value = relatedGuest(guest)?.name || "";
+  form.elements.plusOne.checked = Boolean(guest.plusOne);
+  form.elements.lodging.checked = Boolean(guest.lodging);
+  form.elements.note.value = guest.note || "";
 }
 
 function renderSeating() {
@@ -844,8 +932,15 @@ function openModal(id) {
   const form = modal.querySelector("form");
   form?.reset();
   if (id === "accountModal") renderUser();
-  if (id === "taskModal") renderTaskFormOptions();
-  if (id === "guestModal") renderGuestFormOptions();
+  if (id === "taskModal") {
+    resetTaskFormMode();
+    renderTaskFormOptions();
+  }
+  if (id === "vendorModal") renderVendorFormOptions();
+  if (id === "guestModal") {
+    resetGuestFormMode();
+    renderGuestFormOptions();
+  }
   if (typeof modal.showModal === "function") modal.showModal();
   else modal.setAttribute("open", "");
 }
@@ -878,6 +973,11 @@ document.body.addEventListener("click", async (event) => {
     task.status = nextTaskStatus(task.status);
     saveState();
     renderAll();
+  }
+
+  const taskEdit = event.target.closest("[data-task-edit]");
+  if (taskEdit) {
+    openTaskEditor(taskEdit.dataset.taskEdit);
   }
 
   const done = event.target.closest("[data-task-done]");
@@ -924,6 +1024,11 @@ document.body.addEventListener("click", async (event) => {
     guest.confirmed = !guest.confirmed;
     saveState();
     renderAll();
+  }
+
+  const guestEdit = event.target.closest("[data-guest-edit]");
+  if (guestEdit) {
+    openGuestEditor(guestEdit.dataset.guestEdit);
   }
 
   const guestDelete = event.target.closest("[data-guest-delete]");
@@ -1026,6 +1131,11 @@ document.querySelector("#guestFilter").addEventListener("change", (event) => {
   renderGuests();
 });
 
+document.querySelector("#vendorFilter").addEventListener("change", (event) => {
+  vendorFilter = event.target.value;
+  renderVendors();
+});
+
 document.querySelector("#addGuestTagButton").addEventListener("click", () => {
   const label = window.prompt("新标签名称，例如：男方同事");
   const tag = label?.trim();
@@ -1035,6 +1145,17 @@ document.querySelector("#addGuestTagButton").addEventListener("click", () => {
   renderGuestFormOptions();
   document.querySelector("#guestGroupSelect").value = tag;
   renderGuests();
+});
+
+document.querySelector("#addVendorTagButton").addEventListener("click", () => {
+  const label = window.prompt("新供应商类别，例如：婚车");
+  const tag = label?.trim();
+  if (!tag) return;
+  if (!state.vendorTags.includes(tag)) state.vendorTags.push(tag);
+  saveState();
+  renderVendorFormOptions();
+  document.querySelector("#vendorTypeSelect").value = tag;
+  renderVendors();
 });
 
 function removeGuestFromTables(guestId) {
@@ -1082,17 +1203,23 @@ document.querySelector("#weddingDate").addEventListener("change", (event) => {
 
 document.querySelector("#taskForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget));
-  state.tasks.push({
-    id: Date.now(),
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  const editingId = Number(form.dataset.editingId || 0);
+  const task = editingId ? state.tasks.find((item) => item.id === editingId) : null;
+  const nextTask = {
+    id: task?.id || Date.now(),
     title: data.title,
     details: data.details,
     owner: data.owner,
     due: data.due || state.weddingDate,
     phase: data.phase || "统筹",
-    status: "todo"
-  });
+    status: task?.status || "todo"
+  };
+  if (task) Object.assign(task, nextTask);
+  else state.tasks.push(nextTask);
   closeModal("taskModal");
+  form.dataset.editingId = "";
   saveState();
   renderAll();
 });
@@ -1129,18 +1256,23 @@ document.querySelector("#guestForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
-  const related = state.guests.find((guest) => guest.name === data.relatedGuestName);
-  state.guests.push({
-    id: Date.now(),
+  const editingId = Number(form.dataset.editingId || 0);
+  const guest = editingId ? state.guests.find((item) => item.id === editingId) : null;
+  const related = state.guests.find((item) => item.id !== editingId && item.name === data.relatedGuestName);
+  const nextGuest = {
+    id: guest?.id || Date.now(),
     name: data.name,
     group: data.group,
     plusOne: Boolean(data.plusOne),
     lodging: Boolean(data.lodging),
     relatedGuestId: related?.id || "",
     note: data.note,
-    confirmed: false
-  });
+    confirmed: guest?.confirmed || false
+  };
+  if (guest) Object.assign(guest, nextGuest);
+  else state.guests.push(nextGuest);
   closeModal("guestModal");
+  form.dataset.editingId = "";
   saveState();
   renderAll();
 });

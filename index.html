@@ -183,6 +183,10 @@
             </div>
             <button class="primary-button" type="button" data-open-modal="vendorModal">添加供应商</button>
           </div>
+          <div class="filter-row">
+            <label for="vendorFilter">类别筛选</label>
+            <select id="vendorFilter"></select>
+          </div>
           <div class="vendor-layout">
             <section class="vendor-section">
               <div class="panel-heading">
@@ -286,7 +290,7 @@
         </label>
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="taskModal">取消</button>
-          <button class="primary-button" type="submit">保存任务</button>
+          <button class="primary-button" type="submit" id="taskSubmitButton">保存任务</button>
         </div>
       </form>
     </dialog>
@@ -302,7 +306,13 @@
         </div>
         <div class="form-grid">
           <label><span>供应商名称</span><input name="name" required /></label>
-          <label><span>供应商类别</span><input name="type" placeholder="摄影 / 婚庆 / 酒店" required /></label>
+          <div class="inline-field">
+            <label>
+              <span>供应商类别</span>
+              <select name="type" id="vendorTypeSelect" required></select>
+            </label>
+            <button class="secondary-button" type="button" id="addVendorTagButton">添加类别</button>
+          </div>
           <label><span>供应商排期</span><input name="schedule" placeholder="例如：10月18日全天可用" required /></label>
           <label><span>联系人名称</span><input name="contactName" required /></label>
           <label><span>联系人电话</span><input name="phone" required /></label>
@@ -350,7 +360,7 @@
         <label><span>备注</span><textarea name="note" rows="4"></textarea></label>
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="guestModal">取消</button>
-          <button class="primary-button" type="submit">保存宾客</button>
+          <button class="primary-button" type="submit" id="guestSubmitButton">保存宾客</button>
         </div>
       </form>
     </dialog>
