@@ -172,6 +172,9 @@
             <div>
               <p>先建预算项目，再根据供应商报价和付款节点持续更新已付与尾款。</p>
             </div>
+          </div>
+          <div class="subview-toolbar">
+            <span></span>
             <button class="primary-button" type="button" data-open-modal="budgetModal">添加预算</button>
           </div>
           <div class="budget-summary" id="budgetSummary"></div>
@@ -198,11 +201,13 @@
             <div>
               <p>左侧维护供应商库；点“最终选择”后，供应商会进入右侧确认区。</p>
             </div>
-            <button class="primary-button" type="button" data-open-modal="vendorModal">添加供应商</button>
           </div>
-          <div class="filter-row">
-            <label for="vendorFilter">类别筛选</label>
-            <select id="vendorFilter"></select>
+          <div class="subview-toolbar">
+            <div class="filter-row">
+              <label for="vendorFilter">类别筛选</label>
+              <select id="vendorFilter"></select>
+            </div>
+            <button class="primary-button" type="button" data-open-modal="vendorModal">添加供应商</button>
           </div>
           <div class="vendor-layout">
             <section class="vendor-section">

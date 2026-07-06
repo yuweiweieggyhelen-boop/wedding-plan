@@ -1002,6 +1002,10 @@ small {
   margin-bottom: 14px;
 }
 
+.subview-toolbar .filter-row {
+  margin-bottom: 0;
+}
+
 .filter-row label {
   color: var(--muted);
   font-size: 14px;
