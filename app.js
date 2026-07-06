@@ -37,6 +37,7 @@ let vendorDbPromise;
 let vendorImageUrls = new Map();
 let pendingCover = "";
 let guestFilter = "all";
+const taskCategories = ["统筹", "场地", "供应商", "宾客", "预算", "设计", "采购", "当天流程"];
 
 const views = {
   overview: document.querySelector("#overviewView"),
@@ -650,6 +651,27 @@ function renderGuestFormOptions() {
   relatedList.innerHTML = state.guests.map((guest) => `<option value="${text(guest.name)}"></option>`).join("");
 }
 
+function memberDisplayName(member) {
+  return member.display_name || member.email || "协作成员";
+}
+
+function renderTaskFormOptions() {
+  const categorySelect = document.querySelector("#taskCategorySelect");
+  const ownerSelect = document.querySelector("#taskOwnerSelect");
+  const dueInput = document.querySelector("#taskDueInput");
+  if (!categorySelect || !ownerSelect || !dueInput) return;
+
+  categorySelect.innerHTML = taskCategories.map((category) => `<option value="${text(category)}">${text(category)}</option>`).join("");
+  const members = workspaceMembers.length
+    ? workspaceMembers
+    : [{ user_id: currentSession?.user?.id, email: currentUser.email, display_name: currentUser.name }];
+  ownerSelect.innerHTML = members.map((member) => {
+    const label = memberDisplayName(member);
+    return `<option value="${text(label)}">${text(label)}</option>`;
+  }).join("");
+  dueInput.value = state.weddingDate;
+}
+
 function renderSeating() {
   const assigned = assignedGuestIds();
   const unassignedGuests = state.guests.filter((guest) => !assigned.has(guest.id));
@@ -822,6 +844,7 @@ function openModal(id) {
   const form = modal.querySelector("form");
   form?.reset();
   if (id === "accountModal") renderUser();
+  if (id === "taskModal") renderTaskFormOptions();
   if (id === "guestModal") renderGuestFormOptions();
   if (typeof modal.showModal === "function") modal.showModal();
   else modal.setAttribute("open", "");
@@ -1065,8 +1088,8 @@ document.querySelector("#taskForm").addEventListener("submit", (event) => {
     title: data.title,
     details: data.details,
     owner: data.owner,
-    due: state.weddingDate,
-    phase: "新事项",
+    due: data.due || state.weddingDate,
+    phase: data.phase || "统筹",
     status: "todo"
   });
   closeModal("taskModal");

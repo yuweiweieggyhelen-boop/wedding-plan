@@ -270,7 +270,20 @@
         </div>
         <label><span>任务名称</span><input name="title" required /></label>
         <label><span>任务内容</span><textarea name="details" rows="5" required></textarea></label>
-        <label><span>负责人</span><input name="owner" required /></label>
+        <div class="form-grid">
+          <label>
+            <span>任务类别</span>
+            <select name="phase" id="taskCategorySelect" required></select>
+          </label>
+          <label>
+            <span>截止日期</span>
+            <input name="due" id="taskDueInput" type="date" required />
+          </label>
+        </div>
+        <label>
+          <span>负责人</span>
+          <select name="owner" id="taskOwnerSelect" required></select>
+        </label>
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="taskModal">取消</button>
           <button class="primary-button" type="submit">保存任务</button>
