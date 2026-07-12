@@ -205,9 +205,20 @@ async function saveWorkspaceState() {
   if (!currentWorkspace?.id) return;
   const { error } = await supabaseClient
     .from("wedding_workspaces")
-    .update({ state, updated_at: new Date().toISOString() })
+    .update({ state: compactStateForRemote(state), updated_at: new Date().toISOString() })
     .eq("id", currentWorkspace.id);
   if (error) console.warn("保存协作数据失败", error.message);
+}
+
+function compactStateForRemote(sourceState) {
+  const compactState = structuredClone(sourceState);
+  compactState.cover = "";
+  compactState.ideas = (compactState.ideas || []).map((idea) => ({
+    ...idea,
+    images: [],
+    imageData: ""
+  }));
+  return compactState;
 }
 
 function money(value) {
@@ -385,6 +396,8 @@ async function enterApplication(session) {
   } catch (error) {
     const message = error.name === "QuotaExceededError" || error.message.includes("exceeded the quota")
       ? "浏览器本地缓存空间不足，图片较多时会出现这个提示。请刷新页面重试，协作数据会优先使用 Supabase 保存。"
+      : error.message.includes("statement timeout")
+        ? "远程数据加载超时：通常是旧版本把图片写进数据库导致数据过大。请在 Supabase SQL Editor 运行 supabase-clean-large-media.sql 后再刷新。"
       : `数据库还没准备好：${error.message}。请先运行 supabase-schema.sql。`;
     showAuthGate(message, "error");
   }
