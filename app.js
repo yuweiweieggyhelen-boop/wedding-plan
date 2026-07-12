@@ -99,6 +99,8 @@ function normalizeState(value) {
     if (!Array.isArray(vendor.images)) vendor.images = vendor.imageName ? [vendor.id] : [];
     if (!vendor.description) vendor.description = "";
     if (!vendor.sourceUrl) vendor.sourceUrl = "";
+    if (!vendor.xiaohongshuName) vendor.xiaohongshuName = "";
+    if (!vendor.baseLocation) vendor.baseLocation = "";
     if (!value.vendorTags.includes(vendor.type)) value.vendorTags.push(vendor.type);
   });
   if (!Array.isArray(value.ideaTags) || !value.ideaTags.length) {
@@ -991,6 +993,10 @@ async function renderVendorCard(vendor) {
         <div class="vendor-title">
           <span class="pill">${text(vendor.type || "未分类")}</span>
           <strong>${text(name)}</strong>
+          <div class="vendor-public-meta">
+            ${vendor.xiaohongshuName ? `<span>小红书：${text(vendor.xiaohongshuName)}</span>` : ""}
+            ${vendor.baseLocation ? `<span>常驻地：${text(vendor.baseLocation)}</span>` : ""}
+          </div>
         </div>
         <dl>
           <div><dt>排期</dt><dd>${text(vendor.schedule || "待确认")}</dd></div>
@@ -1279,7 +1285,9 @@ async function openVendorEditor(vendorId) {
     form.elements.type.add(new Option(vendor.type || "摄影", vendor.type || "摄影"));
   }
   form.elements.name.value = vendor.name || "";
+  form.elements.xiaohongshuName.value = vendor.xiaohongshuName || "";
   form.elements.type.value = vendor.type || "摄影";
+  form.elements.baseLocation.value = vendor.baseLocation || "";
   form.elements.schedule.value = vendor.schedule || "";
   form.elements.contactName.value = vendor.contactName || "";
   form.elements.phone.value = vendor.phone || "";
@@ -1299,6 +1307,8 @@ async function openVendorDetail(vendorId) {
   document.querySelector("#vendorDetailTitle").textContent = name;
   document.querySelector("#vendorDetailDescription").textContent = vendor.description || "暂无文字描述";
   document.querySelector("#vendorDetailMeta").innerHTML = `
+    <div><span>小红书</span><strong>${text(vendor.xiaohongshuName || "待补充")}</strong></div>
+    <div><span>常驻地</span><strong>${text(vendor.baseLocation || "待确认")}</strong></div>
     <div><span>排期</span><strong>${text(vendor.schedule || "待确认")}</strong></div>
     <div><span>联系人</span><strong>${text([vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认")}</strong></div>
     <div><span>报价</span><strong>${money(vendor.quote)}</strong></div>
@@ -2005,7 +2015,9 @@ document.querySelector("#vendorForm").addEventListener("submit", async (event) =
   const nextVendor = {
     id: vendor?.id || Date.now(),
     name: String(data.name || "").trim(),
+    xiaohongshuName: String(data.xiaohongshuName || "").trim(),
     type: data.type || "摄影",
+    baseLocation: String(data.baseLocation || "").trim(),
     schedule: String(data.schedule || "").trim(),
     contactName: String(data.contactName || "").trim(),
     phone: String(data.phone || "").trim(),

@@ -1542,6 +1542,21 @@ tbody tr:last-child td {
   font-size: 18px;
 }
 
+.vendor-public-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vendor-public-meta span {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .vendor-description {
   margin: 0;
   color: var(--muted);
