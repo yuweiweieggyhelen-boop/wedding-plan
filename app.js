@@ -1007,6 +1007,7 @@ async function setIdeaImages(images) {
     const imageUrl = await getIdeaImageUrl(image);
     return `
       <figure>
+        <button class="preview-remove-button" type="button" data-idea-image-remove="${index}" aria-label="删除第 ${index + 1} 张图片">×</button>
         <img src="${imageUrl}" alt="创意图片预览 ${index + 1}" />
         <figcaption>${index === 0 ? "主图" : `图片 ${index + 1}`}</figcaption>
       </figure>
@@ -1410,6 +1411,13 @@ document.body.addEventListener("click", async (event) => {
     state.vendors = state.vendors.filter((item) => item.id !== vendor.id);
     saveState();
     renderAll();
+  }
+
+  const ideaImageRemove = event.target.closest("[data-idea-image-remove]");
+  if (ideaImageRemove) {
+    const index = Number(ideaImageRemove.dataset.ideaImageRemove);
+    const nextImages = currentIdeaImages().filter((_, imageIndex) => imageIndex !== index);
+    await setIdeaImages(nextImages);
   }
 
   const ideaView = event.target.closest("[data-idea-view]");
