@@ -386,6 +386,22 @@
       </form>
     </dialog>
 
+    <dialog class="modal wide" id="vendorDetailModal" aria-labelledby="vendorDetailTitle">
+      <article class="modal-card">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow" id="vendorDetailCategory">Vendor</p>
+            <h2 id="vendorDetailTitle">供应商详情</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="vendorDetailModal" aria-label="关闭">×</button>
+        </div>
+        <p class="idea-detail-description" id="vendorDetailDescription"></p>
+        <div class="vendor-detail-meta" id="vendorDetailMeta"></div>
+        <div class="idea-detail-actions" id="vendorDetailActions"></div>
+        <div class="idea-detail-gallery" id="vendorDetailGallery"></div>
+      </article>
+    </dialog>
+
     <dialog class="modal wide" id="ideaModal" aria-labelledby="ideaModalTitle">
       <form class="modal-card" id="ideaForm">
         <div class="modal-heading">

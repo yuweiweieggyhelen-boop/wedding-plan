@@ -968,12 +968,16 @@ async function renderVendors() {
 }
 
 async function renderVendorCard(vendor) {
-  const imageUrl = await getVendorImageUrl(vendorImages(vendor)[0]);
+  const images = vendorImages(vendor);
+  const imageUrl = await getVendorImageUrl(images[0]);
   const name = vendor.name || "未命名供应商";
   const sourceUrl = extractUrl(vendor.sourceUrl);
   return `
     <article class="vendor-card">
-      <div class="vendor-image">${imageUrl ? `<img src="${imageUrl}" alt="${text(name)} 案例" />` : `<span>案例图片</span>`}</div>
+      <button class="vendor-image" type="button" data-vendor-view="${vendor.id}">
+        ${imageUrl ? `<img src="${imageUrl}" alt="${text(name)} 案例" />` : `<span>案例图片</span>`}
+        ${images.length > 1 ? `<span class="image-count-badge">${images.length} 张</span>` : ""}
+      </button>
       <div class="vendor-body">
         <div class="vendor-title">
           <span class="pill">${text(vendor.type || "未分类")}</span>
@@ -987,6 +991,7 @@ async function renderVendorCard(vendor) {
         ${vendor.description ? `<p class="vendor-description">${text(vendor.description)}</p>` : ""}
         <div class="card-actions">
           ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">原文</a>` : ""}
+          <button class="secondary-button idea-view-button" type="button" data-vendor-view="${vendor.id}">查看</button>
           <button class="secondary-button" type="button" data-vendor-edit="${vendor.id}">编辑</button>
           <button class="secondary-button" type="button" data-vendor-select="${vendor.id}">${vendor.selected ? "移出最终" : "最终选择"}</button>
           <button class="delete-button" type="button" data-vendor-delete="${vendor.id}">删除</button>
@@ -1273,6 +1278,35 @@ async function openVendorEditor(vendorId) {
   form.elements.description.value = vendor.description || "";
   form.elements.sourceUrl.value = vendor.sourceUrl || "";
   await setVendorImages(vendorImages(vendor));
+}
+
+async function openVendorDetail(vendorId) {
+  const vendor = state.vendors.find((item) => item.id === Number(vendorId));
+  if (!vendor) return;
+  const images = vendorImages(vendor);
+  const sourceUrl = extractUrl(vendor.sourceUrl);
+  const name = vendor.name || "未命名供应商";
+  document.querySelector("#vendorDetailCategory").textContent = vendor.type || "Vendor";
+  document.querySelector("#vendorDetailTitle").textContent = name;
+  document.querySelector("#vendorDetailDescription").textContent = vendor.description || "暂无文字描述";
+  document.querySelector("#vendorDetailMeta").innerHTML = `
+    <div><span>排期</span><strong>${text(vendor.schedule || "待确认")}</strong></div>
+    <div><span>联系人</span><strong>${text([vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认")}</strong></div>
+    <div><span>报价</span><strong>${money(vendor.quote)}</strong></div>
+  `;
+  document.querySelector("#vendorDetailActions").innerHTML = `
+    ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>` : `<span class="muted-text">无原文链接</span>`}
+    <button class="primary-button" type="button" data-vendor-edit="${vendor.id}">编辑供应商</button>
+  `;
+  document.querySelector("#vendorDetailGallery").innerHTML = (await Promise.all(images.map(async (image, index) => {
+    const imageUrl = await getVendorImageUrl(image);
+    return `
+      <figure>
+        <img src="${imageUrl}" alt="${text(name)} 案例图片 ${index + 1}" />
+      </figure>
+    `;
+  }))).join("") || emptyState("暂无案例图片");
+  openModal("vendorDetailModal");
 }
 
 async function openIdeaDetail(ideaId) {
@@ -1631,7 +1665,13 @@ document.body.addEventListener("click", async (event) => {
 
   const vendorEdit = event.target.closest("[data-vendor-edit]");
   if (vendorEdit) {
+    closeModal("vendorDetailModal");
     await openVendorEditor(vendorEdit.dataset.vendorEdit);
+  }
+
+  const vendorView = event.target.closest("[data-vendor-view]");
+  if (vendorView) {
+    await openVendorDetail(vendorView.dataset.vendorView);
   }
 
   const vendorDelete = event.target.closest("[data-vendor-delete]");
