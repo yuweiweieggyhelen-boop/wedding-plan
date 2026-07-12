@@ -166,6 +166,12 @@ function text(value) {
     .replaceAll("'", "&#039;");
 }
 
+function extractUrl(value) {
+  const match = String(value || "").match(/https?:\/\/[^\s"'<>]+/i);
+  if (!match) return "";
+  return match[0].replace(/[)，。；、,.!?]+$/u, "");
+}
+
 function setAuthMessage(message, type = "info") {
   const element = document.querySelector("#authMessage");
   element.textContent = message || "";
@@ -955,11 +961,12 @@ function openIdeaDetail(ideaId) {
   const idea = state.ideas.find((item) => item.id === Number(ideaId));
   if (!idea) return;
   const images = ideaImages(idea);
+  const sourceUrl = extractUrl(idea.sourceUrl);
   document.querySelector("#ideaDetailCategory").textContent = idea.category || "Idea";
   document.querySelector("#ideaDetailTitle").textContent = idea.summary || "创意详情";
   document.querySelector("#ideaDetailDescription").textContent = idea.description || "暂无创意描述";
   document.querySelector("#ideaDetailActions").innerHTML = `
-    ${idea.sourceUrl ? `<a class="secondary-button" href="${text(idea.sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>` : `<span class="muted-text">无原文链接</span>`}
+    ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>` : `<span class="muted-text">无原文链接</span>`}
     <button class="primary-button" type="button" data-idea-edit="${idea.id}">编辑创意</button>
   `;
   document.querySelector("#ideaDetailGallery").innerHTML = images.map((image, index) => `
@@ -1521,12 +1528,6 @@ function assignGuestToTable(guestId, tableId) {
   renderAll();
 }
 
-document.querySelectorAll(".modal").forEach((modal) => {
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) closeModal(modal.id);
-  });
-});
-
 document.querySelector("#weddingDate").addEventListener("change", (event) => {
   state.weddingDate = event.target.value;
   saveState();
@@ -1612,7 +1613,7 @@ document.querySelector("#ideaForm").addEventListener("submit", (event) => {
     category: data.category,
     summary: data.summary,
     description: data.description,
-    sourceUrl: data.sourceUrl,
+    sourceUrl: extractUrl(data.sourceUrl) || data.sourceUrl,
     images,
     imageData: images[0],
     createdAt: idea?.createdAt || new Date().toISOString(),
