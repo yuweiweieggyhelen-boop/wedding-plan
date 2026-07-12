@@ -983,6 +983,11 @@ async function renderVendorCard(vendor) {
   const imageUrl = await getVendorImageUrl(images[0]);
   const name = vendor.name || "未命名供应商";
   const sourceUrl = extractUrl(vendor.sourceUrl);
+  const contact = [vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认";
+  const publicMeta = [
+    vendor.xiaohongshuName ? `小红书：${vendor.xiaohongshuName}` : "",
+    vendor.baseLocation ? `常驻地：${vendor.baseLocation}` : "",
+  ].filter(Boolean);
   return `
     <article class="vendor-card">
       <button class="vendor-image" type="button" data-vendor-view="${vendor.id}">
@@ -990,26 +995,23 @@ async function renderVendorCard(vendor) {
         ${images.length > 1 ? `<span class="image-count-badge">${images.length} 张</span>` : ""}
       </button>
       <div class="vendor-body">
-        <div class="vendor-title">
-          <span class="pill">${text(vendor.type || "未分类")}</span>
+        <div class="vendor-header">
+          <span class="vendor-type-chip">${text(vendor.type || "未分类")}</span>
           <strong>${text(name)}</strong>
-          <div class="vendor-public-meta">
-            ${vendor.xiaohongshuName ? `<span>小红书：${text(vendor.xiaohongshuName)}</span>` : ""}
-            ${vendor.baseLocation ? `<span>常驻地：${text(vendor.baseLocation)}</span>` : ""}
-          </div>
+          ${publicMeta.length ? `<p class="vendor-subline">${publicMeta.map(text).join(" · ")}</p>` : ""}
         </div>
-        <dl>
-          <div><dt>排期</dt><dd>${text(vendor.schedule || "待确认")}</dd></div>
-          <div><dt>联系人</dt><dd>${text([vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认")}</dd></div>
-          <div><dt>报价</dt><dd>${money(vendor.quote)}</dd></div>
-        </dl>
+        <div class="vendor-facts">
+          <div><span>排期</span><strong>${text(vendor.schedule || "待确认")}</strong></div>
+          <div><span>联系人</span><strong>${text(contact)}</strong></div>
+          <div><span>报价</span><strong>${money(vendor.quote)}</strong></div>
+        </div>
         ${vendor.description ? `<p class="vendor-description">${text(vendor.description)}</p>` : ""}
-        <div class="card-actions">
-          ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">原文</a>` : ""}
-          <button class="secondary-button idea-view-button" type="button" data-vendor-view="${vendor.id}">查看</button>
-          <button class="secondary-button" type="button" data-vendor-edit="${vendor.id}">编辑</button>
+        <div class="vendor-actions">
+          <button class="primary-button vendor-view-button" type="button" data-vendor-view="${vendor.id}">查看</button>
           <button class="secondary-button" type="button" data-vendor-select="${vendor.id}">${vendor.selected ? "移出最终" : "最终选择"}</button>
-          <button class="delete-button" type="button" data-vendor-delete="${vendor.id}">删除</button>
+          <button class="text-button" type="button" data-vendor-edit="${vendor.id}">编辑</button>
+          ${sourceUrl ? `<a class="text-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">原文</a>` : ""}
+          <button class="text-button danger" type="button" data-vendor-delete="${vendor.id}">删除</button>
         </div>
       </div>
     </article>
