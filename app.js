@@ -3,6 +3,8 @@ const USER_STORAGE_KEY = "wedding-pm-user-v1";
 const ACTIVE_WORKSPACE_KEY = "wedding-pm-active-workspace-v1";
 const VENDOR_DB_NAME = "wedding-pm-vendor-files";
 const VENDOR_STORE = "caseImages";
+const IDEA_STORE = "ideaImages";
+const COVER_STORE = "coverImages";
 const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
 const SUPABASE_URL = "https://pcxxtgewmverwqmrijlo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JIW4FwbiDd1OwUh0ZoAYGQ_2v_-Wjq6";
@@ -38,7 +40,10 @@ let appReady = false;
 let remoteSaveTimer = 0;
 let vendorDbPromise;
 let vendorImageUrls = new Map();
+let ideaImageUrls = new Map();
+let coverImageUrls = new Map();
 let pendingCover = "";
+let pendingCoverUrl = "";
 let guestFilter = "all";
 let vendorFilter = "all";
 let ideaFilter = "all";
@@ -128,7 +133,7 @@ function saveState() {
 
 function saveStateCache() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(compactStateForStorage(state)));
   } catch (error) {
     console.warn("本地缓存空间不足，已跳过本地缓存。协作数据仍会保存到 Supabase。", error.message);
   }
@@ -205,20 +210,24 @@ async function saveWorkspaceState() {
   if (!currentWorkspace?.id) return;
   const { error } = await supabaseClient
     .from("wedding_workspaces")
-    .update({ state: compactStateForRemote(state), updated_at: new Date().toISOString() })
+    .update({ state: compactStateForStorage(state), updated_at: new Date().toISOString() })
     .eq("id", currentWorkspace.id);
   if (error) console.warn("保存协作数据失败", error.message);
 }
 
-function compactStateForRemote(sourceState) {
+function compactStateForStorage(sourceState) {
   const compactState = structuredClone(sourceState);
-  compactState.cover = "";
+  if (isInlineMedia(compactState.cover)) compactState.cover = "";
   compactState.ideas = (compactState.ideas || []).map((idea) => ({
     ...idea,
-    images: [],
+    images: (idea.images || []).filter((image) => !isInlineMedia(image)),
     imageData: ""
   }));
   return compactState;
+}
+
+function isInlineMedia(value) {
+  return String(value || "").startsWith("data:") || String(value || "").startsWith("blob:");
 }
 
 function money(value) {
@@ -241,47 +250,92 @@ function coverOffset(value) {
 function openVendorDb() {
   if (vendorDbPromise) return vendorDbPromise;
   vendorDbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(VENDOR_DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(VENDOR_STORE);
+    const request = indexedDB.open(VENDOR_DB_NAME, 2);
+    request.onupgradeneeded = () => {
+      [VENDOR_STORE, IDEA_STORE, COVER_STORE].forEach((store) => {
+        if (!request.result.objectStoreNames.contains(store)) {
+          request.result.createObjectStore(store);
+        }
+      });
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
   return vendorDbPromise;
 }
 
-async function saveVendorImage(id, file) {
+async function saveMediaBlob(store, id, file) {
   const db = await openVendorDb();
   await new Promise((resolve, reject) => {
-    const tx = db.transaction(VENDOR_STORE, "readwrite");
-    tx.objectStore(VENDOR_STORE).put(file, String(id));
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(file, String(id));
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
 }
 
-async function deleteVendorImage(id) {
+async function deleteMediaBlob(store, id) {
   const db = await openVendorDb();
   await new Promise((resolve, reject) => {
-    const tx = db.transaction(VENDOR_STORE, "readwrite");
-    tx.objectStore(VENDOR_STORE).delete(String(id));
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(String(id));
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
 }
 
-async function getVendorImageUrl(id) {
-  if (vendorImageUrls.has(id)) return vendorImageUrls.get(id);
+async function getMediaUrl(store, cache, id) {
+  if (!id) return "";
+  if (String(id).startsWith("data:") || String(id).startsWith("blob:")) return id;
+  if (cache.has(id)) return cache.get(id);
   const db = await openVendorDb();
   const blob = await new Promise((resolve, reject) => {
-    const tx = db.transaction(VENDOR_STORE, "readonly");
-    const request = tx.objectStore(VENDOR_STORE).get(String(id));
+    const tx = db.transaction(store, "readonly");
+    const request = tx.objectStore(store).get(String(id));
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
   if (!blob) return "";
   const url = URL.createObjectURL(blob);
-  vendorImageUrls.set(id, url);
+  cache.set(id, url);
   return url;
+}
+
+async function saveVendorImage(id, file) {
+  await saveMediaBlob(VENDOR_STORE, id, file);
+}
+
+async function deleteVendorImage(id) {
+  await deleteMediaBlob(VENDOR_STORE, id);
+}
+
+async function getVendorImageUrl(id) {
+  return getMediaUrl(VENDOR_STORE, vendorImageUrls, id);
+}
+
+function mediaId(prefix) {
+  const suffix = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${suffix}`;
+}
+
+async function saveIdeaImage(file) {
+  const id = mediaId("idea");
+  await saveMediaBlob(IDEA_STORE, id, file);
+  return id;
+}
+
+async function getIdeaImageUrl(id) {
+  return getMediaUrl(IDEA_STORE, ideaImageUrls, id);
+}
+
+async function saveCoverImage(file) {
+  const id = mediaId("cover");
+  await saveMediaBlob(COVER_STORE, id, file);
+  return id;
+}
+
+async function getCoverImageUrl(id) {
+  return getMediaUrl(COVER_STORE, coverImageUrls, id);
 }
 
 function profileName(user) {
@@ -786,7 +840,7 @@ async function renderVendorCard(vendor) {
   `;
 }
 
-function renderIdeas() {
+async function renderIdeas() {
   const filter = document.querySelector("#ideaFilter");
   if (filter) {
     filter.innerHTML = `<option value="all">全部类别</option>${state.ideaTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("")}`;
@@ -794,12 +848,12 @@ function renderIdeas() {
   }
 
   const visibleIdeas = ideaFilter === "all" ? state.ideas : state.ideas.filter((idea) => idea.category === ideaFilter);
-  document.querySelector("#ideaGrid").innerHTML = visibleIdeas.map(renderIdeaCard).join("") || emptyState("暂无创意。可以截图后点“添加创意”直接粘贴。");
+  document.querySelector("#ideaGrid").innerHTML = (await Promise.all(visibleIdeas.map(renderIdeaCard))).join("") || emptyState("暂无创意。可以截图后点“添加创意”直接粘贴。");
 }
 
-function renderIdeaCard(idea) {
+async function renderIdeaCard(idea) {
   const images = ideaImages(idea);
-  const mainImage = images[0] || "";
+  const mainImage = await getIdeaImageUrl(images[0]);
   return `
     <article class="idea-card">
       <figure class="idea-image" data-idea-view="${idea.id}">
@@ -920,30 +974,33 @@ function currentIdeaImages() {
   }
 }
 
-function setIdeaImages(images) {
+async function setIdeaImages(images) {
   const uniqueImages = images.filter(Boolean);
   document.querySelector("#ideaImagesData").value = JSON.stringify(uniqueImages);
   const preview = document.querySelector("#ideaPreview");
   preview.classList.toggle("hidden", uniqueImages.length === 0);
-  preview.innerHTML = uniqueImages.map((image, index) => `
-    <figure>
-      <img src="${image}" alt="创意图片预览 ${index + 1}" />
-      <figcaption>${index === 0 ? "主图" : `图片 ${index + 1}`}</figcaption>
-    </figure>
-  `).join("");
+  preview.innerHTML = (await Promise.all(uniqueImages.map(async (image, index) => {
+    const imageUrl = await getIdeaImageUrl(image);
+    return `
+      <figure>
+        <img src="${imageUrl}" alt="创意图片预览 ${index + 1}" />
+        <figcaption>${index === 0 ? "主图" : `图片 ${index + 1}`}</figcaption>
+      </figure>
+    `;
+  }))).join("");
 }
 
 async function setIdeaImageFromFile(file) {
   if (!file?.type?.startsWith("image/")) return;
-  const dataUrl = await readFileAsDataUrl(file);
-  setIdeaImages([...currentIdeaImages(), dataUrl]);
+  const imageId = await saveIdeaImage(file);
+  await setIdeaImages([...currentIdeaImages(), imageId]);
 }
 
 async function setIdeaImagesFromFiles(files) {
   const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
   if (!imageFiles.length) return;
-  const images = await Promise.all(imageFiles.map(readFileAsDataUrl));
-  setIdeaImages([...currentIdeaImages(), ...images]);
+  const imageIds = await Promise.all(imageFiles.map(saveIdeaImage));
+  await setIdeaImages([...currentIdeaImages(), ...imageIds]);
 }
 
 async function handleIdeaPaste(event) {
@@ -955,7 +1012,7 @@ async function handleIdeaPaste(event) {
   await setIdeaImageFromFile(imageItem.getAsFile());
 }
 
-function openIdeaEditor(ideaId) {
+async function openIdeaEditor(ideaId) {
   const idea = state.ideas.find((item) => item.id === Number(ideaId));
   if (!idea) return;
   openModal("ideaModal");
@@ -967,10 +1024,10 @@ function openIdeaEditor(ideaId) {
   form.elements.summary.value = idea.summary || "";
   form.elements.description.value = idea.description || "";
   form.elements.sourceUrl.value = idea.sourceUrl || "";
-  setIdeaImages(ideaImages(idea));
+  await setIdeaImages(ideaImages(idea));
 }
 
-function openIdeaDetail(ideaId) {
+async function openIdeaDetail(ideaId) {
   const idea = state.ideas.find((item) => item.id === Number(ideaId));
   if (!idea) return;
   const images = ideaImages(idea);
@@ -982,11 +1039,14 @@ function openIdeaDetail(ideaId) {
     ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>` : `<span class="muted-text">无原文链接</span>`}
     <button class="primary-button" type="button" data-idea-edit="${idea.id}">编辑创意</button>
   `;
-  document.querySelector("#ideaDetailGallery").innerHTML = images.map((image, index) => `
-    <figure>
-      <img src="${image}" alt="${text(idea.summary)} 图片 ${index + 1}" />
-    </figure>
-  `).join("") || emptyState("暂无图片");
+  document.querySelector("#ideaDetailGallery").innerHTML = (await Promise.all(images.map(async (image, index) => {
+    const imageUrl = await getIdeaImageUrl(image);
+    return `
+      <figure>
+        <img src="${imageUrl}" alt="${text(idea.summary)} 图片 ${index + 1}" />
+      </figure>
+    `;
+  }))).join("") || emptyState("暂无图片");
   openModal("ideaDetailModal");
 }
 
@@ -1134,15 +1194,7 @@ function renderUser() {
   }
 
   document.querySelector("#sidebarMembers").innerHTML = renderMemberStack();
-
-  const heroPhoto = document.querySelector("#heroPhoto");
-  const cover = state.cover || currentUser.cover;
-  const coverY = state.cover ? state.coverY : currentUser.coverY;
-  if (cover) {
-    heroPhoto.innerHTML = `<img class="cover-shift-image" src="${cover}" alt="婚礼封面照片" style="transform: translateY(${coverOffset(coverY)}%);" />`;
-  } else {
-    heroPhoto.innerHTML = "<span>封面照片</span>";
-  }
+  renderHeroPhoto();
 
   document.querySelector("#inviteCount").textContent = pendingInvites.length;
   document.querySelector("#inviteList").innerHTML = pendingInvites
@@ -1158,6 +1210,20 @@ function renderUser() {
       `
     )
     .join("") || emptyState("暂无新的协作邀请");
+}
+
+async function renderHeroPhoto() {
+  const heroPhoto = document.querySelector("#heroPhoto");
+  const cover = state.cover || currentUser.cover;
+  const coverY = state.cover ? state.coverY : currentUser.coverY;
+  const coverUrl = await getCoverImageUrl(cover);
+  if (cover) {
+    heroPhoto.innerHTML = coverUrl
+      ? `<img class="cover-shift-image" src="${coverUrl}" alt="婚礼封面照片" style="transform: translateY(${coverOffset(coverY)}%);" />`
+      : "<span>封面照片</span>";
+  } else {
+    heroPhoto.innerHTML = "<span>封面照片</span>";
+  }
 }
 
 function memberInitial(member) {
@@ -1185,15 +1251,18 @@ function renderMemberStack() {
   return `${avatars}${more}`;
 }
 
-function renderCoverPreview() {
+async function renderCoverPreview() {
   const preview = document.querySelector("#coverPreview");
   const cover = pendingCover || state.cover || currentUser.cover;
   const y = Number(document.querySelector("#coverPositionInput").value || state.coverY || currentUser.coverY || 50);
+  const coverUrl = pendingCoverUrl || await getCoverImageUrl(cover);
   if (!cover) {
     preview.innerHTML = "<span>选择图片后预览</span>";
     return;
   }
-  preview.innerHTML = `<img class="cover-shift-image" src="${cover}" alt="封面预览" style="transform: translateY(${coverOffset(y)}%);" />`;
+  preview.innerHTML = coverUrl
+    ? `<img class="cover-shift-image" src="${coverUrl}" alt="封面预览" style="transform: translateY(${coverOffset(y)}%);" />`
+    : "<span>选择图片后预览</span>";
 }
 
 function renderAll() {
@@ -1321,19 +1390,20 @@ document.body.addEventListener("click", async (event) => {
 
   const ideaView = event.target.closest("[data-idea-view]");
   if (ideaView) {
-    openIdeaDetail(ideaView.dataset.ideaView);
+    await openIdeaDetail(ideaView.dataset.ideaView);
   }
 
   const ideaEdit = event.target.closest("[data-idea-edit]");
   if (ideaEdit) {
     closeModal("ideaDetailModal");
-    openIdeaEditor(ideaEdit.dataset.ideaEdit);
+    await openIdeaEditor(ideaEdit.dataset.ideaEdit);
   }
 
   const ideaDelete = event.target.closest("[data-idea-delete]");
   if (ideaDelete) {
     const idea = state.ideas.find((item) => item.id === Number(ideaDelete.dataset.ideaDelete));
     if (!idea || !window.confirm("确定删除这条创意吗？")) return;
+    await Promise.all(ideaImages(idea).filter((image) => !isInlineMedia(image)).map((image) => deleteMediaBlob(IDEA_STORE, image)));
     state.ideas = state.ideas.filter((item) => item.id !== idea.id);
     saveState();
     renderAll();
@@ -1628,7 +1698,7 @@ document.querySelector("#ideaForm").addEventListener("submit", (event) => {
     description: data.description,
     sourceUrl: extractUrl(data.sourceUrl) || data.sourceUrl,
     images,
-    imageData: images[0],
+    imageData: "",
     createdAt: idea?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -1787,6 +1857,7 @@ document.querySelector("#signOutButton").addEventListener("click", async () => {
 
 document.querySelector("#uploadCoverButton").addEventListener("click", () => {
   pendingCover = "";
+  pendingCoverUrl = "";
   openModal("coverModal");
   document.querySelector("#coverPositionInput").value = state.coverY || currentUser.coverY || 50;
   document.querySelector("#coverFileLabel").textContent = state.cover || currentUser.cover ? "更换图片" : "选择图片";
@@ -1796,13 +1867,12 @@ document.querySelector("#uploadCoverButton").addEventListener("click", () => {
 document.querySelector("#coverImageInput").addEventListener("change", (event) => {
   const file = event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    pendingCover = reader.result;
+  saveCoverImage(file).then(async (coverId) => {
+    pendingCover = coverId;
+    pendingCoverUrl = await getCoverImageUrl(coverId);
     document.querySelector("#coverFileLabel").textContent = file.name;
     renderCoverPreview();
-  };
-  reader.readAsDataURL(file);
+  });
 });
 
 document.querySelector("#coverPositionInput").addEventListener("input", renderCoverPreview);
@@ -1823,6 +1893,7 @@ document.querySelector("#coverForm").addEventListener("submit", (event) => {
   renderAll();
   event.currentTarget.reset();
   pendingCover = "";
+  pendingCoverUrl = "";
 });
 
 async function consumeAuthCallback() {
