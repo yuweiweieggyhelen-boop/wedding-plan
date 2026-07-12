@@ -167,9 +167,9 @@ function text(value) {
 }
 
 function extractUrl(value) {
-  const match = String(value || "").match(/https?:\/\/[^\s"'<>]+/i);
+  const match = String(value || "").match(/https?:\/\/[^\s"'<>，。；、）)]+/i);
   if (!match) return "";
-  return match[0].replace(/[)，。；、,.!?]+$/u, "");
+  return match[0].replace(/[),.!?]+$/u, "");
 }
 
 function setAuthMessage(message, type = "info") {
@@ -796,7 +796,7 @@ function renderIdeaCard(idea) {
         <span class="pill">${text(idea.category)}</span>
         <strong>${text(idea.summary)}</strong>
         <div class="card-actions">
-          <button class="secondary-button" type="button" data-idea-view="${idea.id}">查看</button>
+          <button class="secondary-button idea-view-button" type="button" data-idea-view="${idea.id}">查看</button>
           <button class="secondary-button" type="button" data-idea-edit="${idea.id}">编辑</button>
           <button class="delete-button" type="button" data-idea-delete="${idea.id}">删除</button>
         </div>

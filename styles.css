@@ -691,11 +691,15 @@ small {
 .delete-button,
 .icon-button,
 .status-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 36px;
   border-radius: 8px;
   padding: 0 14px;
   font-weight: 500;
   line-height: 1;
+  text-decoration: none;
   white-space: nowrap;
 }
 
@@ -1169,6 +1173,8 @@ tbody tr:last-child td {
 }
 
 .idea-card {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1196,7 +1202,9 @@ tbody tr:last-child td {
 }
 
 .idea-body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 12px;
   padding: 12px;
 }
@@ -1206,7 +1214,19 @@ tbody tr:last-child td {
 }
 
 .idea-body .card-actions {
+  margin-top: auto;
   justify-content: space-between;
+}
+
+.idea-body .card-actions .secondary-button,
+.idea-body .card-actions .delete-button {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.idea-body .card-actions .idea-view-button {
+  border-color: #b8d3ff;
+  color: var(--primary);
 }
 
 .idea-detail-description {
