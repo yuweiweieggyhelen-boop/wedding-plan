@@ -6,6 +6,7 @@ const VENDOR_STORE = "caseImages";
 const IDEA_STORE = "ideaImages";
 const COVER_STORE = "coverImages";
 const MAX_VENDOR_FILE_SIZE = 100 * 1024 * 1024;
+const MEDIA_BUCKET = "wedding-media";
 const SUPABASE_URL = "https://pcxxtgewmverwqmrijlo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JIW4FwbiDd1OwUh0ZoAYGQ_2v_-Wjq6";
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -230,6 +231,10 @@ function isInlineMedia(value) {
   return String(value || "").startsWith("data:") || String(value || "").startsWith("blob:");
 }
 
+function isRemoteMedia(value) {
+  return /^https?:\/\//i.test(String(value || ""));
+}
+
 function money(value) {
   return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
 }
@@ -286,7 +291,7 @@ async function deleteMediaBlob(store, id) {
 
 async function getMediaUrl(store, cache, id) {
   if (!id) return "";
-  if (String(id).startsWith("data:") || String(id).startsWith("blob:")) return id;
+  if (isInlineMedia(id) || isRemoteMedia(id)) return id;
   if (cache.has(id)) return cache.get(id);
   const db = await openVendorDb();
   const blob = await new Promise((resolve, reject) => {
@@ -319,6 +324,8 @@ function mediaId(prefix) {
 }
 
 async function saveIdeaImage(file) {
+  const remoteUrl = await uploadMediaToStorage(file, "ideas");
+  if (remoteUrl) return remoteUrl;
   const id = mediaId("idea");
   await saveMediaBlob(IDEA_STORE, id, file);
   return id;
@@ -329,6 +336,8 @@ async function getIdeaImageUrl(id) {
 }
 
 async function saveCoverImage(file) {
+  const remoteUrl = await uploadMediaToStorage(file, "covers");
+  if (remoteUrl) return remoteUrl;
   const id = mediaId("cover");
   await saveMediaBlob(COVER_STORE, id, file);
   return id;
@@ -336,6 +345,21 @@ async function saveCoverImage(file) {
 
 async function getCoverImageUrl(id) {
   return getMediaUrl(COVER_STORE, coverImageUrls, id);
+}
+
+async function uploadMediaToStorage(file, folder) {
+  if (!supabaseClient || !currentSession?.user || !currentWorkspace?.id) return "";
+  const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "jpg";
+  const path = `${currentWorkspace.id}/${folder}/${mediaId("media")}.${extension}`;
+  const { error } = await supabaseClient.storage
+    .from(MEDIA_BUCKET)
+    .upload(path, file, { cacheControl: "31536000", contentType: file.type, upsert: false });
+  if (error) {
+    console.warn("上传图片到 Supabase Storage 失败，已使用本地存储兜底。", error.message);
+    return "";
+  }
+  const { data } = supabaseClient.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+  return data?.publicUrl || "";
 }
 
 function profileName(user) {
