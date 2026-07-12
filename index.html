@@ -48,6 +48,7 @@
           <button class="nav-item" data-view="tasks"><span class="material-symbols-outlined" aria-hidden="true">checklist</span>任务</button>
           <button class="nav-item" data-view="budget"><span class="material-symbols-outlined" aria-hidden="true">payments</span>预算</button>
           <button class="nav-item" data-view="vendors"><span class="material-symbols-outlined" aria-hidden="true">storefront</span>供应商</button>
+          <button class="nav-item" data-view="ideas"><span class="material-symbols-outlined" aria-hidden="true">tips_and_updates</span>创意中心</button>
           <button class="nav-item" data-view="guests"><span class="material-symbols-outlined" aria-hidden="true">groups</span>宾客</button>
           <button class="nav-item" data-view="timeline"><span class="material-symbols-outlined" aria-hidden="true">event</span>当天流程</button>
         </nav>
@@ -227,6 +228,22 @@
           </div>
         </section>
 
+        <section class="view" id="ideasView" aria-label="创意中心">
+          <div class="section-heading">
+            <div>
+              <p>收集婚礼布置、婚纱照、婚纱等灵感样本，截图后可直接粘贴保存。</p>
+            </div>
+          </div>
+          <div class="subview-toolbar">
+            <div class="filter-row">
+              <label for="ideaFilter">类别筛选</label>
+              <select id="ideaFilter"></select>
+            </div>
+            <button class="primary-button" type="button" data-open-modal="ideaModal">添加创意</button>
+          </div>
+          <div class="idea-grid" id="ideaGrid"></div>
+        </section>
+
         <section class="view" id="guestsView" aria-label="宾客管理">
           <div class="section-heading">
             <div>
@@ -351,6 +368,45 @@
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="vendorModal">取消</button>
           <button class="primary-button" type="submit">保存供应商</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal wide" id="ideaModal" aria-labelledby="ideaModalTitle">
+      <form class="modal-card" id="ideaForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">New Idea</p>
+            <h2 id="ideaModalTitle">添加创意</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="ideaModal" aria-label="关闭">×</button>
+        </div>
+        <div class="inline-field">
+          <label>
+            <span>创意类别</span>
+            <select name="category" id="ideaCategorySelect" required></select>
+          </label>
+          <button class="secondary-button" type="button" id="addIdeaTagButton">添加类别</button>
+        </div>
+        <label>
+          <span>原文链接</span>
+          <input name="sourceUrl" type="url" placeholder="https://..." />
+        </label>
+        <label>
+          <span>创意图片</span>
+          <input id="ideaImageInput" name="imageFile" type="file" accept="image/*" hidden />
+          <input id="ideaImageData" name="imageData" type="hidden" />
+          <button class="paste-zone" id="ideaPasteZone" type="button">
+            <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
+            <strong>点击这里后直接粘贴截图</strong>
+            <small>支持从剪贴板读取图片</small>
+          </button>
+        </label>
+        <button class="secondary-button" id="chooseIdeaImageButton" type="button">选择图片文件</button>
+        <figure class="idea-preview hidden" id="ideaPreview"></figure>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal="ideaModal">取消</button>
+          <button class="primary-button" type="submit">保存创意</button>
         </div>
       </form>
     </dialog>

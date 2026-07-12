@@ -14,10 +14,12 @@ const initialState = {
   coverY: 50,
   guestTags: ["男方亲戚", "女方亲戚", "男方同学", "女方同学"],
   vendorTags: ["摄影", "摄像", "婚庆", "酒店", "司仪", "化妆", "花艺", "甜品", "礼服"],
+  ideaTags: ["婚礼布置", "婚纱照", "婚纱"],
   tasks: [],
   budget: [],
   vendors: [],
   guests: [],
+  ideas: [],
   seating: {
     tables: [
       { id: 1, name: "1桌", guestIds: [] }
@@ -39,6 +41,7 @@ let vendorImageUrls = new Map();
 let pendingCover = "";
 let guestFilter = "all";
 let vendorFilter = "all";
+let ideaFilter = "all";
 let calendarMonth = new Date();
 let calendarMonthInitialized = false;
 const taskCategories = ["统筹", "场地", "供应商", "宾客", "预算", "设计", "采购", "当天流程"];
@@ -48,6 +51,7 @@ const views = {
   tasks: document.querySelector("#tasksView"),
   budget: document.querySelector("#budgetView"),
   vendors: document.querySelector("#vendorsView"),
+  ideas: document.querySelector("#ideasView"),
   guests: document.querySelector("#guestsView"),
   timeline: document.querySelector("#timelineView")
 };
@@ -57,6 +61,7 @@ const titles = {
   tasks: "任务管理",
   budget: "预算管理",
   vendors: "供应商管理",
+  ideas: "创意中心",
   guests: "宾客管理",
   timeline: "婚礼当天流程"
 };
@@ -86,6 +91,15 @@ function normalizeState(value) {
   value.vendors.forEach((vendor) => {
     if (!vendor.type) vendor.type = "摄影";
     if (!value.vendorTags.includes(vendor.type)) value.vendorTags.push(vendor.type);
+  });
+  if (!Array.isArray(value.ideaTags) || !value.ideaTags.length) {
+    value.ideaTags = structuredClone(initialState.ideaTags);
+  }
+  value.ideaTags = [...new Set([...initialState.ideaTags, ...value.ideaTags].filter(Boolean))];
+  if (!Array.isArray(value.ideas)) value.ideas = [];
+  value.ideas.forEach((idea) => {
+    if (!idea.category) idea.category = "婚礼布置";
+    if (!value.ideaTags.includes(idea.category)) value.ideaTags.push(idea.category);
   });
   if (!Array.isArray(value.guests)) value.guests = [];
   value.guests.forEach((guest) => {
@@ -739,6 +753,37 @@ async function renderVendorCard(vendor) {
   `;
 }
 
+function renderIdeas() {
+  const filter = document.querySelector("#ideaFilter");
+  if (filter) {
+    filter.innerHTML = `<option value="all">全部类别</option>${state.ideaTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("")}`;
+    filter.value = state.ideaTags.includes(ideaFilter) ? ideaFilter : "all";
+  }
+
+  const visibleIdeas = ideaFilter === "all" ? state.ideas : state.ideas.filter((idea) => idea.category === ideaFilter);
+  document.querySelector("#ideaGrid").innerHTML = visibleIdeas.map(renderIdeaCard).join("") || emptyState("暂无创意。可以截图后点“添加创意”直接粘贴。");
+}
+
+function renderIdeaCard(idea) {
+  const source = idea.sourceUrl
+    ? `<a class="text-button" href="${text(idea.sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>`
+    : `<span class="muted-text">无原文链接</span>`;
+  return `
+    <article class="idea-card">
+      <figure class="idea-image">
+        ${idea.imageData ? `<img src="${idea.imageData}" alt="${text(idea.category)} 创意图片" />` : `<span>创意图片</span>`}
+      </figure>
+      <div class="idea-body">
+        <span class="pill">${text(idea.category)}</span>
+        <div class="card-actions">
+          ${source}
+          <button class="delete-button" type="button" data-idea-delete="${idea.id}">删除</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderGuests() {
   const filter = document.querySelector("#guestFilter");
   if (filter) {
@@ -790,6 +835,12 @@ function renderVendorFormOptions() {
   typeSelect.innerHTML = state.vendorTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
 }
 
+function renderIdeaFormOptions() {
+  const categorySelect = document.querySelector("#ideaCategorySelect");
+  if (!categorySelect) return;
+  categorySelect.innerHTML = state.ideaTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
+}
+
 function memberDisplayName(member) {
   return member.display_name || member.email || "协作成员";
 }
@@ -809,6 +860,32 @@ function renderTaskFormOptions() {
     return `<option value="${text(label)}">${text(label)}</option>`;
   }).join("");
   dueInput.value = state.weddingDate;
+}
+
+function resetIdeaForm() {
+  document.querySelector("#ideaImageData").value = "";
+  document.querySelector("#ideaImageInput").value = "";
+  const preview = document.querySelector("#ideaPreview");
+  preview.classList.add("hidden");
+  preview.innerHTML = "";
+}
+
+async function setIdeaImageFromFile(file) {
+  if (!file?.type?.startsWith("image/")) return;
+  const dataUrl = await readFileAsDataUrl(file);
+  document.querySelector("#ideaImageData").value = dataUrl;
+  const preview = document.querySelector("#ideaPreview");
+  preview.classList.remove("hidden");
+  preview.innerHTML = `<img src="${dataUrl}" alt="创意图片预览" />`;
+}
+
+async function handleIdeaPaste(event) {
+  if (!document.querySelector("#ideaModal").open) return;
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+  if (!imageItem) return;
+  event.preventDefault();
+  await setIdeaImageFromFile(imageItem.getAsFile());
 }
 
 function resetTaskFormMode() {
@@ -1025,6 +1102,7 @@ function renderAll() {
   renderCalendar();
   renderBudget();
   renderVendors();
+  renderIdeas();
   renderGuests();
   renderSeating();
   renderTimeline();
@@ -1045,6 +1123,10 @@ function openModal(id) {
     renderTaskFormOptions();
   }
   if (id === "vendorModal") renderVendorFormOptions();
+  if (id === "ideaModal") {
+    renderIdeaFormOptions();
+    resetIdeaForm();
+  }
   if (id === "guestModal") {
     resetGuestFormMode();
     renderGuestFormOptions();
@@ -1129,6 +1211,15 @@ document.body.addEventListener("click", async (event) => {
     if (!vendor || !window.confirm(`确定删除“${vendor.name}”吗？`)) return;
     await deleteVendorImage(vendor.id);
     state.vendors = state.vendors.filter((item) => item.id !== vendor.id);
+    saveState();
+    renderAll();
+  }
+
+  const ideaDelete = event.target.closest("[data-idea-delete]");
+  if (ideaDelete) {
+    const idea = state.ideas.find((item) => item.id === Number(ideaDelete.dataset.ideaDelete));
+    if (!idea || !window.confirm("确定删除这条创意吗？")) return;
+    state.ideas = state.ideas.filter((item) => item.id !== idea.id);
     saveState();
     renderAll();
   }
@@ -1252,6 +1343,11 @@ document.querySelector("#vendorFilter").addEventListener("change", (event) => {
   renderVendors();
 });
 
+document.querySelector("#ideaFilter").addEventListener("change", (event) => {
+  ideaFilter = event.target.value;
+  renderIdeas();
+});
+
 document.querySelector("#addGuestTagButton").addEventListener("click", () => {
   const label = window.prompt("新标签名称，例如：男方同事");
   const tag = label?.trim();
@@ -1273,6 +1369,31 @@ document.querySelector("#addVendorTagButton").addEventListener("click", () => {
   document.querySelector("#vendorTypeSelect").value = tag;
   renderVendors();
 });
+
+document.querySelector("#addIdeaTagButton").addEventListener("click", () => {
+  const label = window.prompt("新创意类别，例如：桌花");
+  const tag = label?.trim();
+  if (!tag) return;
+  if (!state.ideaTags.includes(tag)) state.ideaTags.push(tag);
+  saveState();
+  renderIdeaFormOptions();
+  document.querySelector("#ideaCategorySelect").value = tag;
+  renderIdeas();
+});
+
+document.querySelector("#ideaPasteZone").addEventListener("click", () => {
+  document.querySelector("#ideaPasteZone").focus();
+});
+
+document.querySelector("#chooseIdeaImageButton").addEventListener("click", () => {
+  document.querySelector("#ideaImageInput").click();
+});
+
+document.querySelector("#ideaImageInput").addEventListener("change", async (event) => {
+  await setIdeaImageFromFile(event.target.files[0]);
+});
+
+document.addEventListener("paste", handleIdeaPaste);
 
 function removeGuestFromTables(guestId) {
   state.seating.tables.forEach((table) => {
@@ -1376,6 +1497,26 @@ document.querySelector("#vendorForm").addEventListener("submit", async (event) =
     imageName: file.name
   });
   closeModal("vendorModal");
+  saveState();
+  renderAll();
+});
+
+document.querySelector("#ideaForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form));
+  if (!data.imageData) {
+    window.alert("请先粘贴或选择一张创意图片。");
+    return;
+  }
+  state.ideas.unshift({
+    id: Date.now(),
+    category: data.category,
+    sourceUrl: data.sourceUrl,
+    imageData: data.imageData,
+    createdAt: new Date().toISOString()
+  });
+  closeModal("ideaModal");
   saveState();
   renderAll();
 });
