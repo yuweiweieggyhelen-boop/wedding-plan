@@ -99,6 +99,9 @@ function normalizeState(value) {
   if (!Array.isArray(value.ideas)) value.ideas = [];
   value.ideas.forEach((idea) => {
     if (!idea.category) idea.category = "婚礼布置";
+    if (!Array.isArray(idea.images)) idea.images = idea.imageData ? [idea.imageData] : [];
+    if (!idea.summary) idea.summary = idea.title || idea.category || "未命名创意";
+    if (!idea.description) idea.description = "";
     if (!value.ideaTags.includes(idea.category)) value.ideaTags.push(idea.category);
   });
   if (!Array.isArray(value.guests)) value.guests = [];
@@ -765,23 +768,28 @@ function renderIdeas() {
 }
 
 function renderIdeaCard(idea) {
-  const source = idea.sourceUrl
-    ? `<a class="text-button" href="${text(idea.sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>`
-    : `<span class="muted-text">无原文链接</span>`;
+  const images = ideaImages(idea);
+  const mainImage = images[0] || "";
   return `
     <article class="idea-card">
-      <figure class="idea-image">
-        ${idea.imageData ? `<img src="${idea.imageData}" alt="${text(idea.category)} 创意图片" />` : `<span>创意图片</span>`}
+      <figure class="idea-image" data-idea-view="${idea.id}">
+        ${mainImage ? `<img src="${mainImage}" alt="${text(idea.summary)}" />` : `<span>创意图片</span>`}
       </figure>
       <div class="idea-body">
         <span class="pill">${text(idea.category)}</span>
+        <strong>${text(idea.summary)}</strong>
         <div class="card-actions">
-          ${source}
+          <button class="secondary-button" type="button" data-idea-view="${idea.id}">查看</button>
+          <button class="secondary-button" type="button" data-idea-edit="${idea.id}">编辑</button>
           <button class="delete-button" type="button" data-idea-delete="${idea.id}">删除</button>
         </div>
       </div>
     </article>
   `;
+}
+
+function ideaImages(idea) {
+  return Array.isArray(idea.images) && idea.images.length ? idea.images : (idea.imageData ? [idea.imageData] : []);
 }
 
 function renderGuests() {
@@ -863,20 +871,49 @@ function renderTaskFormOptions() {
 }
 
 function resetIdeaForm() {
-  document.querySelector("#ideaImageData").value = "";
+  const form = document.querySelector("#ideaForm");
+  form.dataset.editingId = "";
+  document.querySelector("#ideaModalTitle").textContent = "添加创意";
+  document.querySelector("#ideaSubmitButton").textContent = "保存创意";
+  document.querySelector("#ideaImagesData").value = "";
   document.querySelector("#ideaImageInput").value = "";
   const preview = document.querySelector("#ideaPreview");
   preview.classList.add("hidden");
   preview.innerHTML = "";
 }
 
+function currentIdeaImages() {
+  try {
+    return JSON.parse(document.querySelector("#ideaImagesData").value || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function setIdeaImages(images) {
+  const uniqueImages = images.filter(Boolean);
+  document.querySelector("#ideaImagesData").value = JSON.stringify(uniqueImages);
+  const preview = document.querySelector("#ideaPreview");
+  preview.classList.toggle("hidden", uniqueImages.length === 0);
+  preview.innerHTML = uniqueImages.map((image, index) => `
+    <figure>
+      <img src="${image}" alt="创意图片预览 ${index + 1}" />
+      <figcaption>${index === 0 ? "主图" : `图片 ${index + 1}`}</figcaption>
+    </figure>
+  `).join("");
+}
+
 async function setIdeaImageFromFile(file) {
   if (!file?.type?.startsWith("image/")) return;
   const dataUrl = await readFileAsDataUrl(file);
-  document.querySelector("#ideaImageData").value = dataUrl;
-  const preview = document.querySelector("#ideaPreview");
-  preview.classList.remove("hidden");
-  preview.innerHTML = `<img src="${dataUrl}" alt="创意图片预览" />`;
+  setIdeaImages([...currentIdeaImages(), dataUrl]);
+}
+
+async function setIdeaImagesFromFiles(files) {
+  const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+  if (!imageFiles.length) return;
+  const images = await Promise.all(imageFiles.map(readFileAsDataUrl));
+  setIdeaImages([...currentIdeaImages(), ...images]);
 }
 
 async function handleIdeaPaste(event) {
@@ -886,6 +923,40 @@ async function handleIdeaPaste(event) {
   if (!imageItem) return;
   event.preventDefault();
   await setIdeaImageFromFile(imageItem.getAsFile());
+}
+
+function openIdeaEditor(ideaId) {
+  const idea = state.ideas.find((item) => item.id === Number(ideaId));
+  if (!idea) return;
+  openModal("ideaModal");
+  const form = document.querySelector("#ideaForm");
+  form.dataset.editingId = String(idea.id);
+  document.querySelector("#ideaModalTitle").textContent = "编辑创意";
+  document.querySelector("#ideaSubmitButton").textContent = "保存修改";
+  form.elements.category.value = idea.category;
+  form.elements.summary.value = idea.summary || "";
+  form.elements.description.value = idea.description || "";
+  form.elements.sourceUrl.value = idea.sourceUrl || "";
+  setIdeaImages(ideaImages(idea));
+}
+
+function openIdeaDetail(ideaId) {
+  const idea = state.ideas.find((item) => item.id === Number(ideaId));
+  if (!idea) return;
+  const images = ideaImages(idea);
+  document.querySelector("#ideaDetailCategory").textContent = idea.category || "Idea";
+  document.querySelector("#ideaDetailTitle").textContent = idea.summary || "创意详情";
+  document.querySelector("#ideaDetailDescription").textContent = idea.description || "暂无创意描述";
+  document.querySelector("#ideaDetailActions").innerHTML = `
+    ${idea.sourceUrl ? `<a class="secondary-button" href="${text(idea.sourceUrl)}" target="_blank" rel="noreferrer">打开原文</a>` : `<span class="muted-text">无原文链接</span>`}
+    <button class="primary-button" type="button" data-idea-edit="${idea.id}">编辑创意</button>
+  `;
+  document.querySelector("#ideaDetailGallery").innerHTML = images.map((image, index) => `
+    <figure>
+      <img src="${image}" alt="${text(idea.summary)} 图片 ${index + 1}" />
+    </figure>
+  `).join("") || emptyState("暂无图片");
+  openModal("ideaDetailModal");
 }
 
 function resetTaskFormMode() {
@@ -1137,7 +1208,9 @@ function openModal(id) {
 
 function closeModal(id) {
   const modal = document.querySelector(`#${id}`);
-  if (typeof modal.close === "function") modal.close();
+  if (typeof modal.close === "function") {
+    if (modal.open) modal.close();
+  }
   else modal.removeAttribute("open");
 }
 
@@ -1213,6 +1286,17 @@ document.body.addEventListener("click", async (event) => {
     state.vendors = state.vendors.filter((item) => item.id !== vendor.id);
     saveState();
     renderAll();
+  }
+
+  const ideaView = event.target.closest("[data-idea-view]");
+  if (ideaView) {
+    openIdeaDetail(ideaView.dataset.ideaView);
+  }
+
+  const ideaEdit = event.target.closest("[data-idea-edit]");
+  if (ideaEdit) {
+    closeModal("ideaDetailModal");
+    openIdeaEditor(ideaEdit.dataset.ideaEdit);
   }
 
   const ideaDelete = event.target.closest("[data-idea-delete]");
@@ -1390,7 +1474,7 @@ document.querySelector("#chooseIdeaImageButton").addEventListener("click", () =>
 });
 
 document.querySelector("#ideaImageInput").addEventListener("change", async (event) => {
-  await setIdeaImageFromFile(event.target.files[0]);
+  await setIdeaImagesFromFiles(event.target.files);
 });
 
 document.addEventListener("paste", handleIdeaPaste);
@@ -1505,18 +1589,28 @@ document.querySelector("#ideaForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
-  if (!data.imageData) {
+  const images = currentIdeaImages();
+  if (!images.length) {
     window.alert("请先粘贴或选择一张创意图片。");
     return;
   }
-  state.ideas.unshift({
-    id: Date.now(),
+  const editingId = Number(form.dataset.editingId || 0);
+  const idea = editingId ? state.ideas.find((item) => item.id === editingId) : null;
+  const nextIdea = {
+    id: idea?.id || Date.now(),
     category: data.category,
+    summary: data.summary,
+    description: data.description,
     sourceUrl: data.sourceUrl,
-    imageData: data.imageData,
-    createdAt: new Date().toISOString()
-  });
+    images,
+    imageData: images[0],
+    createdAt: idea?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (idea) Object.assign(idea, nextIdea);
+  else state.ideas.unshift(nextIdea);
   closeModal("ideaModal");
+  form.dataset.editingId = "";
   saveState();
   renderAll();
 });

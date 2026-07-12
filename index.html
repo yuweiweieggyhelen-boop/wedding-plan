@@ -389,26 +389,49 @@
           <button class="secondary-button" type="button" id="addIdeaTagButton">添加类别</button>
         </div>
         <label>
+          <span>创意简介</span>
+          <input name="summary" id="ideaSummaryInput" placeholder="例如：草坪婚礼低饱和花艺" required />
+        </label>
+        <label>
+          <span>创意描述</span>
+          <textarea name="description" id="ideaDescriptionInput" rows="4" placeholder="记录喜欢的点、可借鉴元素、需要和供应商确认的细节"></textarea>
+        </label>
+        <label>
           <span>原文链接</span>
           <input name="sourceUrl" type="url" placeholder="https://..." />
         </label>
         <label>
           <span>创意图片</span>
-          <input id="ideaImageInput" name="imageFile" type="file" accept="image/*" hidden />
-          <input id="ideaImageData" name="imageData" type="hidden" />
+          <input id="ideaImageInput" name="imageFile" type="file" accept="image/*" multiple hidden />
+          <input id="ideaImagesData" name="imagesData" type="hidden" />
           <button class="paste-zone" id="ideaPasteZone" type="button">
             <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
             <strong>点击这里后直接粘贴截图</strong>
-            <small>支持从剪贴板读取图片</small>
+            <small>支持连续粘贴多张图片</small>
           </button>
         </label>
         <button class="secondary-button" id="chooseIdeaImageButton" type="button">选择图片文件</button>
-        <figure class="idea-preview hidden" id="ideaPreview"></figure>
+        <div class="idea-preview-grid hidden" id="ideaPreview"></div>
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="ideaModal">取消</button>
-          <button class="primary-button" type="submit">保存创意</button>
+          <button class="primary-button" type="submit" id="ideaSubmitButton">保存创意</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="modal wide" id="ideaDetailModal" aria-labelledby="ideaDetailTitle">
+      <article class="modal-card">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow" id="ideaDetailCategory">Idea</p>
+            <h2 id="ideaDetailTitle">创意详情</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal="ideaDetailModal" aria-label="关闭">×</button>
+        </div>
+        <p class="idea-detail-description" id="ideaDetailDescription"></p>
+        <div class="idea-detail-actions" id="ideaDetailActions"></div>
+        <div class="idea-detail-gallery" id="ideaDetailGallery"></div>
+      </article>
     </dialog>
 
     <dialog class="modal" id="guestModal" aria-labelledby="guestModalTitle">
