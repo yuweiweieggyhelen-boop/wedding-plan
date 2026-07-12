@@ -122,8 +122,16 @@ function normalizeState(value) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  saveStateCache();
   queueRemoteSave();
+}
+
+function saveStateCache() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.warn("本地缓存空间不足，已跳过本地缓存。协作数据仍会保存到 Supabase。", error.message);
+  }
 }
 
 function loadUser() {
@@ -320,7 +328,7 @@ async function loadCurrentWorkspace(user) {
     workspace.state = state;
     await saveWorkspaceState();
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  saveStateCache();
   await loadWorkspaceMembers();
 }
 
@@ -369,7 +377,10 @@ async function enterApplication(session) {
     hideAuthGate();
     renderAll();
   } catch (error) {
-    showAuthGate(`数据库还没准备好：${error.message}。请先运行 supabase-schema.sql。`, "error");
+    const message = error.name === "QuotaExceededError" || error.message.includes("exceeded the quota")
+      ? "浏览器本地缓存空间不足，图片较多时会出现这个提示。请刷新页面重试，协作数据会优先使用 Supabase 保存。"
+      : `数据库还没准备好：${error.message}。请先运行 supabase-schema.sql。`;
+    showAuthGate(message, "error");
   }
 }
 
