@@ -1484,16 +1484,19 @@ tbody tr:last-child td {
   border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(132px, 180px) minmax(0, 1fr);
+  min-height: 196px;
 }
 
 .vendor-image {
   position: relative;
   width: 100%;
-  height: 220px;
+  height: 100%;
+  min-height: 196px;
   padding: 0;
   border: 0;
+  border-right: 1px solid var(--line);
   display: grid;
   place-items: center;
   background: var(--surface-soft);
@@ -1523,11 +1526,11 @@ tbody tr:last-child td {
 }
 
 .vendor-body {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 14px;
+  min-width: 0;
 }
 
 .vendor-title {
