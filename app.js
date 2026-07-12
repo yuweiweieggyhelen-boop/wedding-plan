@@ -844,8 +844,6 @@ function renderCalendar() {
     calendarMonthInitialized = true;
   }
   const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
-  const gridStart = new Date(monthStart);
-  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
   const todayKey = formatDateKey(new Date());
   const tasksByDate = state.tasks.reduce((groups, task) => {
     if (!task.due) return groups;
@@ -854,33 +852,44 @@ function renderCalendar() {
     return groups;
   }, new Map());
 
-  document.querySelector("#calendarMonthLabel").textContent = monthLabel(monthStart);
+  const visibleMonths = Array.from({ length: 4 }, (_, index) => new Date(monthStart.getFullYear(), monthStart.getMonth() + index, 1));
+  const rangeLabel = `${monthLabel(visibleMonths[0])} - ${monthLabel(visibleMonths[visibleMonths.length - 1])}`;
+  document.querySelector("#calendarMonthLabel").textContent = rangeLabel;
   document.querySelector("#calendarSummary").textContent = `${state.tasks.length} 个任务 · ${state.tasks.filter((task) => task.status !== "done").length} 个未完成`;
 
   const weekdayHeader = ["日", "一", "二", "三", "四", "五", "六"]
     .map((day) => `<div class="calendar-weekday">${day}</div>`)
     .join("");
-  const dayCells = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + index);
-    const key = formatDateKey(date);
-    const dayTasks = (tasksByDate.get(key) || []).sort((a, b) => taskStatusRank(a.status) - taskStatusRank(b.status));
-    const isMuted = date.getMonth() !== monthStart.getMonth();
-    const isToday = key === todayKey;
+  document.querySelector("#taskCalendar").innerHTML = visibleMonths.map((currentMonth) => {
+    const gridStart = new Date(currentMonth);
+    gridStart.setDate(currentMonth.getDate() - currentMonth.getDay());
+    const dayCells = Array.from({ length: 42 }, (_, index) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + index);
+      const key = formatDateKey(date);
+      const dayTasks = (tasksByDate.get(key) || []).sort((a, b) => taskStatusRank(a.status) - taskStatusRank(b.status));
+      const isMuted = date.getMonth() !== currentMonth.getMonth();
+      const isToday = key === todayKey;
+      return `
+        <article class="${["calendar-day", isMuted ? "muted" : "", isToday ? "today" : ""].filter(Boolean).join(" ")}">
+          <div class="calendar-day-head">
+            <span>${date.getDate()}</span>
+            ${dayTasks.length ? `<strong>${dayTasks.length}</strong>` : ""}
+          </div>
+          <div class="calendar-task-list">
+            ${dayTasks.slice(0, 3).map(renderCalendarTask).join("")}
+            ${dayTasks.length > 3 ? `<span class="calendar-more">+${dayTasks.length - 3}</span>` : ""}
+          </div>
+        </article>
+      `;
+    }).join("");
     return `
-      <article class="${["calendar-day", isMuted ? "muted" : "", isToday ? "today" : ""].filter(Boolean).join(" ")}">
-        <div class="calendar-day-head">
-          <span>${date.getDate()}</span>
-          ${dayTasks.length ? `<strong>${dayTasks.length}</strong>` : ""}
-        </div>
-        <div class="calendar-task-list">
-          ${dayTasks.map(renderCalendarTask).join("")}
-        </div>
-      </article>
+      <section class="calendar-month-card">
+        <h3>${monthLabel(currentMonth)}</h3>
+        <div class="calendar-grid">${weekdayHeader + dayCells}</div>
+      </section>
     `;
   }).join("");
-
-  document.querySelector("#taskCalendar").innerHTML = weekdayHeader + dayCells;
   document.querySelector("#calendarEmpty").classList.toggle("hidden", state.tasks.length > 0);
 }
 
@@ -1941,13 +1950,13 @@ document.querySelector("#weddingDate").addEventListener("change", (event) => {
 });
 
 document.querySelector("#calendarPrevButton")?.addEventListener("click", () => {
-  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 4, 1);
   calendarMonthInitialized = true;
   renderCalendar();
 });
 
 document.querySelector("#calendarNextButton")?.addEventListener("click", () => {
-  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 4, 1);
   calendarMonthInitialized = true;
   renderCalendar();
 });

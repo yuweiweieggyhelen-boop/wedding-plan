@@ -948,12 +948,31 @@ small {
   font-size: 13px;
 }
 
+.calendar-months-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.calendar-month-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.calendar-month-card h3 {
+  margin: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
   background: var(--surface);
 }
 
@@ -973,8 +992,8 @@ small {
 }
 
 .calendar-day {
-  min-height: 136px;
-  padding: 10px;
+  min-height: 88px;
+  padding: 7px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: #fff;
@@ -1025,14 +1044,14 @@ small {
 
 .calendar-task {
   width: 100%;
-  min-height: 32px;
-  padding: 6px 8px;
+  min-height: 24px;
+  padding: 4px 6px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
   color: var(--ink);
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -1063,6 +1082,11 @@ small {
 .calendar-task.done {
   border-left: 4px solid var(--success);
   color: var(--muted);
+}
+
+.calendar-more {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .pill {
@@ -1460,12 +1484,14 @@ tbody tr:last-child td {
   border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
 }
 
 .vendor-image {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 220px;
   padding: 0;
   border: 0;
   display: grid;
@@ -1478,7 +1504,7 @@ tbody tr:last-child td {
 .vendor-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: top center;
 }
 
@@ -1497,7 +1523,9 @@ tbody tr:last-child td {
 }
 
 .vendor-body {
-  display: grid;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 14px;
 }
@@ -1516,6 +1544,14 @@ tbody tr:last-child td {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.vendor-card .card-actions {
+  margin-top: auto;
 }
 
 .vendor-detail-meta {
@@ -1760,8 +1796,8 @@ dd {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 
-  .calendar-day {
-    min-height: 112px;
+  .calendar-months-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1798,13 +1834,13 @@ dd {
     grid-template-columns: 1fr;
   }
 
-  .calendar-grid {
-    overflow-x: auto;
+  .calendar-months-grid {
+    grid-template-columns: 1fr;
   }
 
   .calendar-weekday,
   .calendar-day {
-    min-width: 92px;
+    min-width: 0;
   }
 
   .timeline-item {
