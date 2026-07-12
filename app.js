@@ -866,6 +866,7 @@ async function renderVendorCard(vendor) {
           <div><dt>报价</dt><dd>${money(vendor.quote)}</dd></div>
         </dl>
         <div class="card-actions">
+          <button class="secondary-button" type="button" data-vendor-edit="${vendor.id}">编辑</button>
           <button class="secondary-button" type="button" data-vendor-select="${vendor.id}">${vendor.selected ? "移出最终" : "最终选择"}</button>
           <button class="delete-button" type="button" data-vendor-delete="${vendor.id}">删除</button>
         </div>
@@ -966,6 +967,10 @@ function renderVendorFormOptions() {
 }
 
 function resetVendorForm() {
+  const form = document.querySelector("#vendorForm");
+  form.dataset.editingId = "";
+  document.querySelector("#vendorModalTitle").textContent = "添加供应商";
+  document.querySelector("#vendorSubmitButton").textContent = "保存供应商";
   document.querySelector("#vendorImagesData").value = "";
   document.querySelector("#vendorImageInput").value = "";
   const preview = document.querySelector("#vendorPreview");
@@ -1125,6 +1130,26 @@ async function openIdeaEditor(ideaId) {
   form.elements.description.value = idea.description || "";
   form.elements.sourceUrl.value = idea.sourceUrl || "";
   await setIdeaImages(ideaImages(idea));
+}
+
+async function openVendorEditor(vendorId) {
+  const vendor = state.vendors.find((item) => item.id === Number(vendorId));
+  if (!vendor) return;
+  openModal("vendorModal");
+  const form = document.querySelector("#vendorForm");
+  form.dataset.editingId = String(vendor.id);
+  document.querySelector("#vendorModalTitle").textContent = "编辑供应商";
+  document.querySelector("#vendorSubmitButton").textContent = "保存修改";
+  if (![...form.elements.type.options].some((option) => option.value === vendor.type)) {
+    form.elements.type.add(new Option(vendor.type || "摄影", vendor.type || "摄影"));
+  }
+  form.elements.name.value = vendor.name || "";
+  form.elements.type.value = vendor.type || "摄影";
+  form.elements.schedule.value = vendor.schedule || "";
+  form.elements.contactName.value = vendor.contactName || "";
+  form.elements.phone.value = vendor.phone || "";
+  form.elements.quote.value = vendor.quote || "";
+  await setVendorImages(vendorImages(vendor));
 }
 
 async function openIdeaDetail(ideaId) {
@@ -1481,6 +1506,11 @@ document.body.addEventListener("click", async (event) => {
     renderAll();
   }
 
+  const vendorEdit = event.target.closest("[data-vendor-edit]");
+  if (vendorEdit) {
+    await openVendorEditor(vendorEdit.dataset.vendorEdit);
+  }
+
   const vendorDelete = event.target.closest("[data-vendor-delete]");
   if (vendorDelete) {
     const vendor = state.vendors.find((item) => item.id === Number(vendorDelete.dataset.vendorDelete));
@@ -1786,21 +1816,25 @@ document.querySelector("#vendorForm").addEventListener("submit", async (event) =
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
-  const id = Date.now();
+  const editingId = Number(form.dataset.editingId || 0);
+  const vendor = editingId ? state.vendors.find((item) => item.id === editingId) : null;
   const images = currentVendorImages();
-  state.vendors.push({
-    id,
+  const nextVendor = {
+    id: vendor?.id || Date.now(),
     name: String(data.name || "").trim(),
     type: data.type || "摄影",
     schedule: String(data.schedule || "").trim(),
     contactName: String(data.contactName || "").trim(),
     phone: String(data.phone || "").trim(),
     quote: Number(data.quote || 0),
-    selected: false,
+    selected: vendor?.selected || false,
     imageName: "",
     images
-  });
+  };
+  if (vendor) Object.assign(vendor, nextVendor);
+  else state.vendors.push(nextVendor);
   closeModal("vendorModal");
+  form.dataset.editingId = "";
   saveState();
   renderAll();
 });
