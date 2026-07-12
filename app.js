@@ -97,6 +97,8 @@ function normalizeState(value) {
   value.vendors.forEach((vendor) => {
     if (!vendor.type) vendor.type = "摄影";
     if (!Array.isArray(vendor.images)) vendor.images = vendor.imageName ? [vendor.id] : [];
+    if (!vendor.description) vendor.description = "";
+    if (!vendor.sourceUrl) vendor.sourceUrl = "";
     if (!value.vendorTags.includes(vendor.type)) value.vendorTags.push(vendor.type);
   });
   if (!Array.isArray(value.ideaTags) || !value.ideaTags.length) {
@@ -546,6 +548,122 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function weddingYear() {
+  return parseDate(state.weddingDate)?.getFullYear() || new Date().getFullYear();
+}
+
+function parseTaskImportDate(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  const endValue = rawValue
+    .replace(/[－—–]/g, "-")
+    .split("-")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .pop() || rawValue;
+  const normalized = endValue
+    .replace(/年/g, "/")
+    .replace(/月/g, "/")
+    .replace(/日/g, "")
+    .replace(/\./g, "/");
+  const fullDate = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (fullDate) {
+    const [, year, month, day] = fullDate;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  const monthDay = normalized.match(/^(\d{1,2})[/-](\d{1,2})$/);
+  if (monthDay) {
+    const [, month, day] = monthDay;
+    return `${weddingYear()}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function defaultTaskOwner() {
+  return memberDisplayName(workspaceMembers[0] || { display_name: currentUser.name, email: currentUser.email });
+}
+
+function taskImportCell(row, headers, name) {
+  const index = headers[name];
+  return index === undefined ? "" : String(row[index] || "").trim();
+}
+
+function findTaskImportHeaders(rows) {
+  const aliases = {
+    time: ["时间", "日期", "截止日期"],
+    title: ["事项", "任务", "任务名称"],
+    details: ["详细任务", "任务内容", "详细内容"],
+    owner: ["负责人", "负责"],
+    note: ["备注", "说明"]
+  };
+  for (let rowIndex = 0; rowIndex < Math.min(rows.length, 20); rowIndex += 1) {
+    const row = rows[rowIndex].map((cell) => String(cell || "").trim());
+    const headers = {};
+    Object.entries(aliases).forEach(([key, labels]) => {
+      const index = row.findIndex((cell) => labels.some((label) => cell.includes(label)));
+      if (index >= 0) headers[key] = index;
+    });
+    if (headers.title !== undefined || headers.details !== undefined) return { rowIndex, headers };
+  }
+  return null;
+}
+
+function parseDelimitedRows(textValue) {
+  return String(textValue || "")
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => line.split(line.includes("\t") ? "\t" : ",").map((cell) => cell.trim()));
+}
+
+async function readTaskImportRows(file) {
+  if (/\.(csv|tsv)$/i.test(file.name)) {
+    return parseDelimitedRows(await file.text());
+  }
+  if (!window.XLSX) {
+    window.alert("Excel 解析工具还没加载完成，请刷新页面后再试一次。");
+    return [];
+  }
+  const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  return window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+}
+
+async function importTasksFromFile(file) {
+  const rows = await readTaskImportRows(file);
+  const headerInfo = findTaskImportHeaders(rows);
+  if (!headerInfo) {
+    window.alert("没有识别到任务表头。请确认表头包含“时间、事项、详细任务、负责人、备注”等字段。");
+    return;
+  }
+  const importedTasks = rows.slice(headerInfo.rowIndex + 1)
+    .map((row, index) => {
+      const title = taskImportCell(row, headerInfo.headers, "title");
+      const details = taskImportCell(row, headerInfo.headers, "details");
+      const owner = taskImportCell(row, headerInfo.headers, "owner");
+      const note = taskImportCell(row, headerInfo.headers, "note");
+      if (!title && !details) return null;
+      const detailLines = [details, note && `备注：${note}`].filter(Boolean);
+      return {
+        id: Date.now() + index,
+        title: title || details.slice(0, 24) || "未命名任务",
+        details: detailLines.join("\n") || "暂无任务内容",
+        owner: owner || defaultTaskOwner(),
+        due: parseTaskImportDate(taskImportCell(row, headerInfo.headers, "time")) || state.weddingDate,
+        phase: title || "统筹",
+        status: "todo"
+      };
+    })
+    .filter(Boolean);
+  if (!importedTasks.length) {
+    window.alert("没有找到可导入的任务行。");
+    return;
+  }
+  state.tasks.push(...importedTasks);
+  saveState();
+  renderAll();
+  window.alert(`已导入 ${importedTasks.length} 个任务。`);
+}
+
 function monthLabel(date) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月`;
 }
@@ -852,6 +970,7 @@ async function renderVendors() {
 async function renderVendorCard(vendor) {
   const imageUrl = await getVendorImageUrl(vendorImages(vendor)[0]);
   const name = vendor.name || "未命名供应商";
+  const sourceUrl = extractUrl(vendor.sourceUrl);
   return `
     <article class="vendor-card">
       <div class="vendor-image">${imageUrl ? `<img src="${imageUrl}" alt="${text(name)} 案例" />` : `<span>案例图片</span>`}</div>
@@ -865,7 +984,9 @@ async function renderVendorCard(vendor) {
           <div><dt>联系人</dt><dd>${text([vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认")}</dd></div>
           <div><dt>报价</dt><dd>${money(vendor.quote)}</dd></div>
         </dl>
+        ${vendor.description ? `<p class="vendor-description">${text(vendor.description)}</p>` : ""}
         <div class="card-actions">
+          ${sourceUrl ? `<a class="secondary-button" href="${text(sourceUrl)}" target="_blank" rel="noreferrer">原文</a>` : ""}
           <button class="secondary-button" type="button" data-vendor-edit="${vendor.id}">编辑</button>
           <button class="secondary-button" type="button" data-vendor-select="${vendor.id}">${vendor.selected ? "移出最终" : "最终选择"}</button>
           <button class="delete-button" type="button" data-vendor-delete="${vendor.id}">删除</button>
@@ -1149,6 +1270,8 @@ async function openVendorEditor(vendorId) {
   form.elements.contactName.value = vendor.contactName || "";
   form.elements.phone.value = vendor.phone || "";
   form.elements.quote.value = vendor.quote || "";
+  form.elements.description.value = vendor.description || "";
+  form.elements.sourceUrl.value = vendor.sourceUrl || "";
   await setVendorImages(vendorImages(vendor));
 }
 
@@ -1789,6 +1912,17 @@ document.querySelector("#calendarNextButton")?.addEventListener("click", () => {
   renderCalendar();
 });
 
+document.querySelector("#taskImportButton")?.addEventListener("click", () => {
+  document.querySelector("#taskImportInput").click();
+});
+
+document.querySelector("#taskImportInput")?.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  await importTasksFromFile(file);
+  event.target.value = "";
+});
+
 document.querySelector("#taskForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -1827,6 +1961,8 @@ document.querySelector("#vendorForm").addEventListener("submit", async (event) =
     contactName: String(data.contactName || "").trim(),
     phone: String(data.phone || "").trim(),
     quote: Number(data.quote || 0),
+    description: String(data.description || "").trim(),
+    sourceUrl: String(data.sourceUrl || "").trim(),
     selected: vendor?.selected || false,
     imageName: "",
     images

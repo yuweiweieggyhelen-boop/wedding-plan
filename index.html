@@ -6,6 +6,7 @@
     <title>喜事计划局</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   </head>
   <body>
     <section class="auth-gate" id="authGate">
@@ -148,7 +149,11 @@
               <button class="active" type="button" data-task-tab="board">看板</button>
               <button type="button" data-task-tab="calendar">日历</button>
             </div>
-            <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
+            <div class="toolbar-actions">
+              <input id="taskImportInput" type="file" accept=".xlsx,.xls,.csv,.tsv" hidden />
+              <button class="secondary-button" type="button" id="taskImportButton">导入 Excel</button>
+              <button class="primary-button" type="button" data-open-modal="taskModal">添加任务</button>
+            </div>
           </div>
           <div class="nested-view active" id="taskBoardPanel">
             <div class="board" id="taskBoard"></div>
@@ -360,6 +365,8 @@
           <label><span>联系人电话</span><input name="phone" /></label>
           <label><span>报价</span><input name="quote" type="number" min="0" step="100" /></label>
         </div>
+        <label><span>文字描述</span><textarea name="description" rows="3" placeholder="记录风格、优势、待确认事项"></textarea></label>
+        <label><span>原文链接 / 小红书分享文案</span><textarea name="sourceUrl" rows="3" placeholder="可以直接粘贴小红书分享文案，我会自动识别其中的链接"></textarea></label>
         <label>
           <span>案例图片</span>
           <input id="vendorImageInput" name="caseImage" type="file" accept="image/*" multiple hidden />
