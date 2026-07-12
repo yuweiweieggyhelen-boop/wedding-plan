@@ -347,24 +347,31 @@
           <button class="icon-button" type="button" data-close-modal="vendorModal" aria-label="关闭">×</button>
         </div>
         <div class="form-grid">
-          <label><span>供应商名称</span><input name="name" required /></label>
+          <label><span>供应商名称</span><input name="name" /></label>
           <div class="inline-field">
             <label>
               <span>供应商类别</span>
-              <select name="type" id="vendorTypeSelect" required></select>
+              <select name="type" id="vendorTypeSelect"></select>
             </label>
             <button class="secondary-button" type="button" id="addVendorTagButton">添加类别</button>
           </div>
-          <label><span>供应商排期</span><input name="schedule" placeholder="例如：10月18日全天可用" required /></label>
-          <label><span>联系人名称</span><input name="contactName" required /></label>
-          <label><span>联系人电话</span><input name="phone" required /></label>
-          <label><span>报价</span><input name="quote" type="number" min="0" step="100" required /></label>
+          <label><span>供应商排期</span><input name="schedule" placeholder="例如：10月18日全天可用" /></label>
+          <label><span>联系人名称</span><input name="contactName" /></label>
+          <label><span>联系人电话</span><input name="phone" /></label>
+          <label><span>报价</span><input name="quote" type="number" min="0" step="100" /></label>
         </div>
         <label>
           <span>案例图片</span>
-          <input name="caseImage" type="file" accept="image/*" required />
-          <small>支持图片文件，单个文件最大 100MB。图片保存在浏览器本地。</small>
+          <input id="vendorImageInput" name="caseImage" type="file" accept="image/*" multiple hidden />
+          <input id="vendorImagesData" name="imagesData" type="hidden" />
+          <button class="paste-zone" id="vendorPasteZone" type="button">
+            <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
+            <strong>点击这里后直接粘贴案例图</strong>
+            <small>支持连续粘贴多张图片，也可以先不上传</small>
+          </button>
         </label>
+        <button class="secondary-button" id="chooseVendorImageButton" type="button">选择图片文件</button>
+        <div class="idea-preview-grid hidden" id="vendorPreview"></div>
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-modal="vendorModal">取消</button>
           <button class="primary-button" type="submit">保存供应商</button>

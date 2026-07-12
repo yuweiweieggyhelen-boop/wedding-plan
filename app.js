@@ -96,6 +96,7 @@ function normalizeState(value) {
   if (!Array.isArray(value.vendors)) value.vendors = [];
   value.vendors.forEach((vendor) => {
     if (!vendor.type) vendor.type = "摄影";
+    if (!Array.isArray(vendor.images)) vendor.images = vendor.imageName ? [vendor.id] : [];
     if (!value.vendorTags.includes(vendor.type)) value.vendorTags.push(vendor.type);
   });
   if (!Array.isArray(value.ideaTags) || !value.ideaTags.length) {
@@ -308,6 +309,14 @@ async function getMediaUrl(store, cache, id) {
 
 async function saveVendorImage(id, file) {
   await saveMediaBlob(VENDOR_STORE, id, file);
+}
+
+async function saveVendorCaseImage(file) {
+  const remoteUrl = await uploadMediaToStorage(file, "vendors");
+  if (remoteUrl) return remoteUrl;
+  const id = mediaId("vendor");
+  await saveVendorImage(id, file);
+  return id;
 }
 
 async function deleteVendorImage(id) {
@@ -841,18 +850,19 @@ async function renderVendors() {
 }
 
 async function renderVendorCard(vendor) {
-  const imageUrl = await getVendorImageUrl(vendor.id);
+  const imageUrl = await getVendorImageUrl(vendorImages(vendor)[0]);
+  const name = vendor.name || "未命名供应商";
   return `
     <article class="vendor-card">
-      <div class="vendor-image">${imageUrl ? `<img src="${imageUrl}" alt="${text(vendor.name)} 案例" />` : `<span>案例图片</span>`}</div>
+      <div class="vendor-image">${imageUrl ? `<img src="${imageUrl}" alt="${text(name)} 案例" />` : `<span>案例图片</span>`}</div>
       <div class="vendor-body">
         <div class="vendor-title">
-          <span class="pill">${text(vendor.type)}</span>
-          <strong>${text(vendor.name)}</strong>
+          <span class="pill">${text(vendor.type || "未分类")}</span>
+          <strong>${text(name)}</strong>
         </div>
         <dl>
-          <div><dt>排期</dt><dd>${text(vendor.schedule)}</dd></div>
-          <div><dt>联系人</dt><dd>${text(vendor.contactName)} · ${text(vendor.phone)}</dd></div>
+          <div><dt>排期</dt><dd>${text(vendor.schedule || "待确认")}</dd></div>
+          <div><dt>联系人</dt><dd>${text([vendor.contactName, vendor.phone].filter(Boolean).join(" · ") || "待确认")}</dd></div>
           <div><dt>报价</dt><dd>${money(vendor.quote)}</dd></div>
         </dl>
         <div class="card-actions">
@@ -862,6 +872,10 @@ async function renderVendorCard(vendor) {
       </div>
     </article>
   `;
+}
+
+function vendorImages(vendor) {
+  return Array.isArray(vendor.images) && vendor.images.length ? vendor.images : (vendor.imageName ? [vendor.id] : []);
 }
 
 async function renderIdeas() {
@@ -951,6 +965,56 @@ function renderVendorFormOptions() {
   typeSelect.innerHTML = state.vendorTags.map((tag) => `<option value="${text(tag)}">${text(tag)}</option>`).join("");
 }
 
+function resetVendorForm() {
+  document.querySelector("#vendorImagesData").value = "";
+  document.querySelector("#vendorImageInput").value = "";
+  const preview = document.querySelector("#vendorPreview");
+  preview.classList.add("hidden");
+  preview.innerHTML = "";
+}
+
+function currentVendorImages() {
+  try {
+    return JSON.parse(document.querySelector("#vendorImagesData").value || "[]");
+  } catch {
+    return [];
+  }
+}
+
+async function setVendorImages(images) {
+  const uniqueImages = images.filter(Boolean);
+  document.querySelector("#vendorImagesData").value = JSON.stringify(uniqueImages);
+  const preview = document.querySelector("#vendorPreview");
+  preview.classList.toggle("hidden", uniqueImages.length === 0);
+  preview.innerHTML = (await Promise.all(uniqueImages.map(async (image, index) => {
+    const imageUrl = await getVendorImageUrl(image);
+    return `
+      <figure>
+        <button class="preview-remove-button" type="button" data-vendor-image-remove="${index}" aria-label="删除第 ${index + 1} 张图片">×</button>
+        <img src="${imageUrl}" alt="供应商案例预览 ${index + 1}" />
+        <figcaption>${index === 0 ? "主图" : `图片 ${index + 1}`}</figcaption>
+      </figure>
+    `;
+  }))).join("");
+}
+
+async function setVendorImageFromFile(file) {
+  if (!file?.type?.startsWith("image/")) return;
+  if (file.size > MAX_VENDOR_FILE_SIZE) {
+    window.alert("图片文件超过 100MB，请换一个更小的文件。");
+    return;
+  }
+  const imageId = await saveVendorCaseImage(file);
+  await setVendorImages([...currentVendorImages(), imageId]);
+}
+
+async function setVendorImagesFromFiles(files) {
+  const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+  for (const file of imageFiles) {
+    await setVendorImageFromFile(file);
+  }
+}
+
 function renderIdeaFormOptions() {
   const categorySelect = document.querySelector("#ideaCategorySelect");
   if (!categorySelect) return;
@@ -1035,6 +1099,17 @@ async function handleIdeaPaste(event) {
   if (!imageItem) return;
   event.preventDefault();
   await setIdeaImageFromFile(imageItem.getAsFile());
+}
+
+async function handleVendorPaste(event) {
+  if (!document.querySelector("#vendorModal").open) return;
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItems = items.filter((item) => item.type.startsWith("image/"));
+  if (!imageItems.length) return;
+  event.preventDefault();
+  for (const imageItem of imageItems) {
+    await setVendorImageFromFile(imageItem.getAsFile());
+  }
 }
 
 async function openIdeaEditor(ideaId) {
@@ -1318,7 +1393,10 @@ function openModal(id) {
     resetTaskFormMode();
     renderTaskFormOptions();
   }
-  if (id === "vendorModal") renderVendorFormOptions();
+  if (id === "vendorModal") {
+    renderVendorFormOptions();
+    resetVendorForm();
+  }
   if (id === "ideaModal") {
     renderIdeaFormOptions();
     resetIdeaForm();
@@ -1407,10 +1485,17 @@ document.body.addEventListener("click", async (event) => {
   if (vendorDelete) {
     const vendor = state.vendors.find((item) => item.id === Number(vendorDelete.dataset.vendorDelete));
     if (!vendor || !window.confirm(`确定删除“${vendor.name}”吗？`)) return;
-    await deleteVendorImage(vendor.id);
+    await Promise.all(vendorImages(vendor).filter((image) => !isInlineMedia(image) && !isRemoteMedia(image)).map((image) => deleteMediaBlob(VENDOR_STORE, image)));
     state.vendors = state.vendors.filter((item) => item.id !== vendor.id);
     saveState();
     renderAll();
+  }
+
+  const vendorImageRemove = event.target.closest("[data-vendor-image-remove]");
+  if (vendorImageRemove) {
+    const index = Number(vendorImageRemove.dataset.vendorImageRemove);
+    const nextImages = currentVendorImages().filter((_, imageIndex) => imageIndex !== index);
+    await setVendorImages(nextImages);
   }
 
   const ideaImageRemove = event.target.closest("[data-idea-image-remove]");
@@ -1598,6 +1683,18 @@ document.querySelector("#addIdeaTagButton").addEventListener("click", () => {
   renderIdeas();
 });
 
+document.querySelector("#vendorPasteZone").addEventListener("click", () => {
+  document.querySelector("#vendorPasteZone").focus();
+});
+
+document.querySelector("#chooseVendorImageButton").addEventListener("click", () => {
+  document.querySelector("#vendorImageInput").click();
+});
+
+document.querySelector("#vendorImageInput").addEventListener("change", async (event) => {
+  await setVendorImagesFromFiles(event.target.files);
+});
+
 document.querySelector("#ideaPasteZone").addEventListener("click", () => {
   document.querySelector("#ideaPasteZone").focus();
 });
@@ -1611,6 +1708,7 @@ document.querySelector("#ideaImageInput").addEventListener("change", async (even
 });
 
 document.addEventListener("paste", handleIdeaPaste);
+document.addEventListener("paste", handleVendorPaste);
 
 function removeGuestFromTables(guestId) {
   state.seating.tables.forEach((table) => {
@@ -1688,24 +1786,19 @@ document.querySelector("#vendorForm").addEventListener("submit", async (event) =
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
-  const file = form.elements.caseImage.files[0];
-  if (!file) return;
-  if (file.size > MAX_VENDOR_FILE_SIZE) {
-    window.alert("图片文件超过 100MB，请换一个更小的文件。");
-    return;
-  }
   const id = Date.now();
-  await saveVendorImage(id, file);
+  const images = currentVendorImages();
   state.vendors.push({
     id,
-    name: data.name,
-    type: data.type,
-    schedule: data.schedule,
-    contactName: data.contactName,
-    phone: data.phone,
-    quote: Number(data.quote),
+    name: String(data.name || "").trim(),
+    type: data.type || "摄影",
+    schedule: String(data.schedule || "").trim(),
+    contactName: String(data.contactName || "").trim(),
+    phone: String(data.phone || "").trim(),
+    quote: Number(data.quote || 0),
     selected: false,
-    imageName: file.name
+    imageName: "",
+    images
   });
   closeModal("vendorModal");
   saveState();
