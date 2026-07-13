@@ -43,6 +43,7 @@ let vendorDbPromise;
 let vendorImageUrls = new Map();
 let ideaImageUrls = new Map();
 let coverImageUrls = new Map();
+let mediaMigrationPromise = null;
 let pendingCover = "";
 let pendingCoverUrl = "";
 let guestFilter = "all";
@@ -284,6 +285,16 @@ async function saveMediaBlob(store, id, file) {
   });
 }
 
+async function getLocalMediaBlob(store, id) {
+  const db = await openVendorDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const request = tx.objectStore(store).get(String(id));
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 async function deleteMediaBlob(store, id) {
   const db = await openVendorDb();
   await new Promise((resolve, reject) => {
@@ -362,7 +373,7 @@ async function getCoverImageUrl(id) {
 
 async function uploadMediaToStorage(file, folder) {
   if (!supabaseClient || !currentSession?.user || !currentWorkspace?.id) return "";
-  const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "jpg";
+  const extension = mediaExtension(file);
   const path = `${currentWorkspace.id}/${folder}/${mediaId("media")}.${extension}`;
   const { error } = await supabaseClient.storage
     .from(MEDIA_BUCKET)
@@ -373,6 +384,87 @@ async function uploadMediaToStorage(file, folder) {
   }
   const { data } = supabaseClient.storage.from(MEDIA_BUCKET).getPublicUrl(path);
   return data?.publicUrl || "";
+}
+
+function mediaExtension(file) {
+  const namedExtension = file?.name?.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+  if (namedExtension) return namedExtension;
+  const byType = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif"
+  };
+  return byType[file?.type] || "jpg";
+}
+
+function shouldMigrateMedia(id) {
+  return Boolean(id) && !isInlineMedia(id) && !isRemoteMedia(id);
+}
+
+async function migrateMediaId(store, folder, id) {
+  if (!shouldMigrateMedia(id)) return id;
+  const blob = await getLocalMediaBlob(store, id);
+  if (!blob) return id;
+  const file = blob instanceof File ? blob : new File([blob], `${id}.${mediaExtension(blob)}`, { type: blob.type || "image/jpeg" });
+  const remoteUrl = await uploadMediaToStorage(file, folder);
+  return remoteUrl || id;
+}
+
+async function migrateMediaList(store, folder, images = []) {
+  let changed = false;
+  const migrated = [];
+  for (const image of images) {
+    const nextImage = await migrateMediaId(store, folder, image);
+    if (nextImage !== image) changed = true;
+    migrated.push(nextImage);
+  }
+  return { images: migrated, changed };
+}
+
+async function migrateWorkspaceMediaToStorage() {
+  if (mediaMigrationPromise) return mediaMigrationPromise;
+  if (!supabaseClient || !currentSession?.user || !currentWorkspace?.id) return null;
+  mediaMigrationPromise = (async () => {
+    let changed = false;
+    const nextCover = await migrateMediaId(COVER_STORE, "covers", state.cover);
+    if (nextCover !== state.cover) {
+      state.cover = nextCover;
+      changed = true;
+    }
+
+    for (const vendor of state.vendors || []) {
+      const result = await migrateMediaList(VENDOR_STORE, "vendors", vendorImages(vendor));
+      if (result.changed) {
+        vendor.images = result.images;
+        vendor.imageName = "";
+        changed = true;
+      }
+    }
+
+    for (const idea of state.ideas || []) {
+      const result = await migrateMediaList(IDEA_STORE, "ideas", ideaImages(idea));
+      if (result.changed) {
+        idea.images = result.images;
+        idea.imageData = "";
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      vendorImageUrls = new Map();
+      ideaImageUrls = new Map();
+      coverImageUrls = new Map();
+      saveStateCache();
+      await saveWorkspaceState();
+      renderAll();
+      console.info("本机旧图片已迁移到 Supabase Storage，换电脑后也可以显示。");
+    }
+    return changed;
+  })().finally(() => {
+    mediaMigrationPromise = null;
+  });
+  return mediaMigrationPromise;
 }
 
 function profileName(user) {
@@ -484,6 +576,9 @@ async function enterApplication(session) {
     appReady = true;
     hideAuthGate();
     renderAll();
+    migrateWorkspaceMediaToStorage().catch((error) => {
+      console.warn("迁移本机图片到 Supabase Storage 失败", error.message);
+    });
   } catch (error) {
     const message = error.name === "QuotaExceededError" || error.message.includes("exceeded the quota")
       ? "浏览器本地缓存空间不足，图片较多时会出现这个提示。请刷新页面重试，协作数据会优先使用 Supabase 保存。"
