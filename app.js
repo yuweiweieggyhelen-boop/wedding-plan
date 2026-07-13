@@ -509,13 +509,7 @@ async function migrateWorkspaceMediaToStorage() {
     }
     const remainingCount = localMediaReferences().length;
     if (beforeCount && !remainingCount) {
-      setMediaSyncBanner({
-        visible: true,
-        status: "success",
-        title: "图片已经同步到云端",
-        text: "这批旧图片已经写入 Supabase Storage，协作者刷新后就能看到。",
-        buttonText: "已同步"
-      });
+      setMediaSyncBanner({ visible: false });
     } else if (beforeCount && remainingCount) {
       setMediaSyncBanner({
         visible: true,
@@ -537,13 +531,7 @@ async function migrateWorkspaceMediaToStorage() {
 async function runMediaSync() {
   const count = localMediaReferences().length;
   if (!count) {
-    setMediaSyncBanner({
-      visible: true,
-      status: "success",
-      title: "图片已经在云端",
-      text: "当前项目没有检测到只存在本机的旧图片。",
-      buttonText: "已同步"
-    });
+    setMediaSyncBanner({ visible: false });
     return;
   }
   setMediaSyncBanner({
