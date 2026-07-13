@@ -427,6 +427,45 @@ small {
   color: var(--muted);
 }
 
+.media-sync-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid #f9ab00;
+  border-radius: 12px;
+  background: #fff8e1;
+}
+
+.media-sync-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.media-sync-banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.media-sync-banner[data-status="success"] {
+  border-color: #34a853;
+  background: #e6f4ea;
+}
+
+.media-sync-banner[data-status="error"] {
+  border-color: #f3c8c3;
+  background: var(--warn-bg);
+}
+
+.media-sync-banner .secondary-button {
+  flex: 0 0 auto;
+}
+
 .hero-panel {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(300px, 440px);
@@ -1899,6 +1938,7 @@ dd {
   .panel-heading,
   .account-summary,
   .invite-row,
+  .media-sync-banner,
   .two-column,
   .hero-panel,
   .metric-grid,
@@ -1911,6 +1951,10 @@ dd {
   .form-grid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .media-sync-banner {
+    align-items: stretch;
   }
 
   .nav-list {

@@ -44,6 +44,7 @@ let vendorImageUrls = new Map();
 let ideaImageUrls = new Map();
 let coverImageUrls = new Map();
 let mediaMigrationPromise = null;
+let lastMediaUploadError = "";
 let pendingCover = "";
 let pendingCoverUrl = "";
 let guestFilter = "all";
@@ -373,12 +374,14 @@ async function getCoverImageUrl(id) {
 
 async function uploadMediaToStorage(file, folder) {
   if (!supabaseClient || !currentSession?.user || !currentWorkspace?.id) return "";
+  lastMediaUploadError = "";
   const extension = mediaExtension(file);
   const path = `${currentWorkspace.id}/${folder}/${mediaId("media")}.${extension}`;
   const { error } = await supabaseClient.storage
     .from(MEDIA_BUCKET)
     .upload(path, file, { cacheControl: "31536000", contentType: file.type, upsert: false });
   if (error) {
+    lastMediaUploadError = error.message;
     console.warn("上传图片到 Supabase Storage 失败，已使用本地存储兜底。", error.message);
     return "";
   }
@@ -422,11 +425,55 @@ async function migrateMediaList(store, folder, images = []) {
   return { images: migrated, changed };
 }
 
+function localMediaReferences() {
+  const references = [];
+  if (shouldMigrateMedia(state.cover)) references.push(state.cover);
+  (state.vendors || []).forEach((vendor) => {
+    vendorImages(vendor).forEach((image) => {
+      if (shouldMigrateMedia(image)) references.push(image);
+    });
+  });
+  (state.ideas || []).forEach((idea) => {
+    ideaImages(idea).forEach((image) => {
+      if (shouldMigrateMedia(image)) references.push(image);
+    });
+  });
+  return references;
+}
+
+function setMediaSyncBanner({ visible, status = "warning", title = "", text: message = "", buttonText = "同步图片到云端", busy = false } = {}) {
+  const banner = document.querySelector("#mediaSyncBanner");
+  if (!banner) return;
+  banner.classList.toggle("hidden", !visible);
+  banner.dataset.status = status;
+  document.querySelector("#mediaSyncTitle").textContent = title;
+  document.querySelector("#mediaSyncText").textContent = message;
+  const button = document.querySelector("#mediaSyncButton");
+  button.textContent = buttonText;
+  button.disabled = busy;
+}
+
+function updateMediaSyncBanner() {
+  const localCount = localMediaReferences().length;
+  if (!localCount) {
+    setMediaSyncBanner({ visible: false });
+    return;
+  }
+  setMediaSyncBanner({
+    visible: true,
+    title: `还有 ${localCount} 张图片只在本机`,
+    text: "这些图片还没有同步到 Supabase Storage，协作者和其它电脑暂时看不到。请在最初上传图片的这台电脑点击同步。",
+    buttonText: "同步图片到云端"
+  });
+}
+
 async function migrateWorkspaceMediaToStorage() {
   if (mediaMigrationPromise) return mediaMigrationPromise;
   if (!supabaseClient || !currentSession?.user || !currentWorkspace?.id) return null;
   mediaMigrationPromise = (async () => {
+    lastMediaUploadError = "";
     let changed = false;
+    const beforeCount = localMediaReferences().length;
     const nextCover = await migrateMediaId(COVER_STORE, "covers", state.cover);
     if (nextCover !== state.cover) {
       state.cover = nextCover;
@@ -460,12 +507,65 @@ async function migrateWorkspaceMediaToStorage() {
       renderAll();
       console.info("本机旧图片已迁移到 Supabase Storage，换电脑后也可以显示。");
     }
-    return changed;
+    const remainingCount = localMediaReferences().length;
+    if (beforeCount && !remainingCount) {
+      setMediaSyncBanner({
+        visible: true,
+        status: "success",
+        title: "图片已经同步到云端",
+        text: "这批旧图片已经写入 Supabase Storage，协作者刷新后就能看到。",
+        buttonText: "已同步"
+      });
+    } else if (beforeCount && remainingCount) {
+      setMediaSyncBanner({
+        visible: true,
+        status: "error",
+        title: `还有 ${remainingCount} 张图片没有同步成功`,
+        text: lastMediaUploadError
+          ? `Supabase Storage 上传失败：${lastMediaUploadError}。请先运行 supabase-storage-setup.sql，然后在原电脑重新点击同步。`
+          : "这些图片文件没有在当前浏览器里找到。请回到最初上传图片的那台电脑打开网页并点击同步。",
+        buttonText: "重新同步"
+      });
+    }
+    return { changed, beforeCount, remainingCount, error: lastMediaUploadError };
   })().finally(() => {
     mediaMigrationPromise = null;
   });
   return mediaMigrationPromise;
 }
+
+async function runMediaSync() {
+  const count = localMediaReferences().length;
+  if (!count) {
+    setMediaSyncBanner({
+      visible: true,
+      status: "success",
+      title: "图片已经在云端",
+      text: "当前项目没有检测到只存在本机的旧图片。",
+      buttonText: "已同步"
+    });
+    return;
+  }
+  setMediaSyncBanner({
+    visible: true,
+    title: `正在同步 ${count} 张图片`,
+    text: "请不要关闭页面。同步完成后，协作者刷新页面就能看到这些图片。",
+    buttonText: "同步中...",
+    busy: true
+  });
+  try {
+    await migrateWorkspaceMediaToStorage();
+  } catch (error) {
+    setMediaSyncBanner({
+      visible: true,
+      status: "error",
+      title: "图片同步失败",
+      text: error.message || "请确认 Supabase Storage 已经运行 supabase-storage-setup.sql。",
+      buttonText: "重新同步"
+    });
+  }
+}
+
 
 function profileName(user) {
   return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "协作账号";
@@ -576,7 +676,7 @@ async function enterApplication(session) {
     appReady = true;
     hideAuthGate();
     renderAll();
-    migrateWorkspaceMediaToStorage().catch((error) => {
+    runMediaSync().catch((error) => {
       console.warn("迁移本机图片到 Supabase Storage 失败", error.message);
     });
   } catch (error) {
@@ -1675,6 +1775,7 @@ function renderAll() {
   renderGuests();
   renderSeating();
   renderTimeline();
+  updateMediaSyncBanner();
 }
 
 function nextTaskStatus(status) {
@@ -2348,6 +2449,8 @@ document.querySelector("#coverForm").addEventListener("submit", (event) => {
   pendingCover = "";
   pendingCoverUrl = "";
 });
+
+document.querySelector("#mediaSyncButton").addEventListener("click", runMediaSync);
 
 async function consumeAuthCallback() {
   const url = new URL(window.location.href);
