@@ -1309,18 +1309,38 @@ tbody tr:last-child td {
 
 .idea-body .card-actions {
   margin-top: auto;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .idea-body .card-actions .secondary-button,
 .idea-body .card-actions .delete-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
+  box-shadow: none;
 }
 
 .idea-body .card-actions .idea-view-button {
-  border-color: #b8d3ff;
+  border-color: #a8c7fa;
+  background: #e8f0fe;
   color: var(--primary);
+}
+
+.idea-body .card-actions .secondary-button:not(.idea-view-button) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.idea-body .card-actions .delete-button {
+  border-color: #f3c8c3;
+  background: var(--surface);
+  color: var(--danger);
 }
 
 .idea-detail-description {
@@ -1655,21 +1675,31 @@ tbody tr:last-child td {
 .vendor-actions .primary-button,
 .vendor-actions .secondary-button,
 .vendor-actions .text-button {
-  min-height: 32px;
-  padding: 0 11px;
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
+  box-shadow: none;
 }
 
 .vendor-actions .primary-button {
   min-width: 58px;
+  border-color: #a8c7fa;
+  background: #e8f0fe;
+  color: var(--primary);
 }
 
 .vendor-actions .secondary-button {
   min-width: 78px;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .vendor-actions .text-button {
+  min-width: 58px;
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--muted);
 }
 
@@ -1678,6 +1708,8 @@ tbody tr:last-child td {
 }
 
 .vendor-actions .text-button.danger {
+  border-color: #f3c8c3;
+  background: var(--surface);
   color: var(--danger);
 }
 
